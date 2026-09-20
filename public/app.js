@@ -518,7 +518,14 @@ window.addEventListener("online",()=>document.querySelector(".offline")?.remove(
 
 async function init(){
   initTelegram();
-  if("serviceWorker" in navigator && !LOCAL_DEMO) navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  if("serviceWorker" in navigator && !LOCAL_DEMO) {
+    if(window.Telegram?.WebApp?.initData) {
+      navigator.serviceWorker.getRegistrations().then(list=>Promise.all(list.map(r=>r.unregister()))).catch(()=>{});
+      if("caches" in window) caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith("love-letter-official-")).map(k=>caches.delete(k)))).catch(()=>{});
+    } else {
+      navigator.serviceWorker.register("/sw.js").catch(()=>{});
+    }
+  }
   const pathMatch=location.pathname.match(/^\/l\/([a-z0-9_-]+)/i);
   const sp=startParam();
   const demoLetter=LOCAL_DEMO?params.get("letter"):null;
