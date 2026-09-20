@@ -27,7 +27,9 @@ await call("setMyCommands", {
   commands: [
     { command: "start", description: "Відкрити Love Letter" },
     { command: "support", description: "Підтримка" },
-    { command: "paysupport", description: "Підтримка платежів" }
+    { command: "paysupport", description: "Підтримка платежів" },
+    { command: "gift", description: "Видати безкоштовні листи (власник)" },
+    { command: "give", description: "Видати безкоштовні листи (власник)" }
   ]
 });
 await call("setMyDescription", { description: "Особисті цифрові листи з маленькою магією. 3 листи щомісяця безкоштовно." });
@@ -37,3 +39,6 @@ await call("setChatMenuButton", {
 });
 console.log(`Webhook: ${origin}/api/telegram/webhook`);
 console.log(`Mini App: ${origin}`);
+
+const webhookInfo = await call("getWebhookInfo");
+console.log("Webhook status:", JSON.stringify({ url: webhookInfo.url, pending_update_count: webhookInfo.pending_update_count, last_error_message: webhookInfo.last_error_message || null }, null, 2));

@@ -20,4 +20,4 @@ if (!html.includes("Підтримка оплати")) throw new Error("Payment 
 const worker = fs.readFileSync("worker/index.js", "utf8");
 if (!worker.includes("senderUsername !== \"hodynnyk\"")) throw new Error("Owner gift guard missing");
 if (!worker.includes("/gift")) throw new Error("Owner gift command missing");
-console.log("Love Letter Official 3.3.2 build: PASS");
+console.log("Love Letter Official 3.3.3 build: PASS");

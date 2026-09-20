@@ -1,4 +1,4 @@
-const VERSION = "3.3.2";
+const VERSION = "3.3.3";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -392,12 +392,43 @@ async function restoreCredit(env, userId, source) {
 }
 
 async function sendBotText(env, chatId, text, htmlMode = false) {
-  if (!env.TELEGRAM_BOT_TOKEN || !chatId) return;
-  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+  if (!env.TELEGRAM_BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
+  if (!chatId) throw new Error("Telegram chat_id is missing");
+  const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, ...(htmlMode ? { parse_mode: "HTML" } : {}) })
   });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.ok) {
+    throw new Error(`Telegram sendMessage failed: ${data?.description || response.status}`);
+  }
+  return data.result;
+}
+
+async function telegramStatus(env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, token_configured: false, error: "TELEGRAM_BOT_TOKEN is not configured" }, 503);
+  const [meRes, hookRes] = await Promise.all([
+    fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getMe`),
+    fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`)
+  ]);
+  const me = await meRes.json().catch(() => null);
+  const hook = await hookRes.json().catch(() => null);
+  return json({
+    ok: Boolean(me?.ok && hook?.ok),
+    token_configured: true,
+    bot: me?.ok ? { id: me.result.id, username: me.result.username } : null,
+    webhook: hook?.ok ? {
+      url: hook.result.url,
+      pending_update_count: hook.result.pending_update_count,
+      last_error_date: hook.result.last_error_date || null,
+      last_error_message: hook.result.last_error_message || null,
+      max_connections: hook.result.max_connections
+    } : null,
+    expected_webhook: `${cfg(env).appOrigin}/api/telegram/webhook`,
+    webhook_secret_configured: Boolean(env.TELEGRAM_WEBHOOK_SECRET),
+    telegram_error: (!me?.ok ? me?.description : null) || (!hook?.ok ? hook?.description : null) || null
+  }, me?.ok && hook?.ok ? 200 : 502);
 }
 
 async function rewardReferral(env, invitedId) {
@@ -789,6 +820,7 @@ export default {
 
     try {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
+      if (url.pathname === "/api/telegram/status" && request.method === "GET") return await telegramStatus(env);
       if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
       if (url.pathname === "/api/auth/logout" && request.method === "POST") return await logoutBrowser();
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);
