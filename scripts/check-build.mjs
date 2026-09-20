@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import vm from "node:vm";
+import { execFileSync } from "node:child_process";
 
+execFileSync(process.execPath, ["--check", "src/index.js"], { stdio: "inherit" });
 const source = fs.readFileSync("src/index.js", "utf8");
-new vm.Script(source, { filename: "src/index.js" });
 
 const marker = "const APP_JS = String.raw`";
 const start = source.indexOf(marker);
