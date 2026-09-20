@@ -102,3 +102,7 @@ The target must have logged in to Love Letter through Telegram at least once so 
 - Browser Telegram authentication uses a one-time bot confirmation flow instead of the Telegram Login Widget, avoiding `Bot domain invalid`.
 - When browser access is disabled, author routes show a Telegram handoff screen; public recipient links remain browser-accessible.
 - Browser zoom is locked (pinch, double-tap, keyboard/trackpad zoom) while the layout remains responsive.
+
+
+## 3.4.4 — Telegram OIDC + admin statistics
+Web login uses Telegram OIDC with PKCE and returns to the site automatically. Configure `TELEGRAM_LOGIN_CLIENT_ID` and secret `TELEGRAM_LOGIN_CLIENT_SECRET`, and allow the site origin plus `/api/auth/telegram/oidc/callback` in BotFather Login Widget. Owner ID `375938798` can use `/webon`, `/weboff`, `/stats`.

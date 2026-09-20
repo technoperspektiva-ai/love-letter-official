@@ -8,7 +8,7 @@ const scripts = [...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/g)]
 for (let i = 0; i < scripts.length; i++) new vm.Script(scripts[i], { filename: `index-inline-${i}.js` });
 if (!html.includes("telegram-commerce-bridge")) throw new Error("Telegram commerce bridge missing");
 if (!html.includes("/api/payments/invoice")) throw new Error("Stars purchase flow missing");
-if (!html.includes("/api/auth/telegram/link/start") || !html.includes("/api/auth/telegram/link/status")) throw new Error("Browser Telegram bot-confirmation login missing");
+if (!html.includes("/api/auth/telegram/oidc/start")) throw new Error("Telegram OIDC web login missing");
 if (!html.includes("cross-browser-viewport-v330")) throw new Error("Cross-browser viewport fix missing");
 console.log(`Inline scripts: ${scripts.length} PASS`);
 if (html.includes("toDataпосилання")) throw new Error("Broken toDataURL identifier detected");
@@ -29,5 +29,8 @@ if (!html.includes("ownerBrowserAccessToggle")) throw new Error("Owner browser a
 if (!worker.includes("/api/admin/browser-access")) throw new Error("Admin browser access API missing");
 if (!worker.includes("browser_access_enabled")) throw new Error("Browser access D1 setting missing");
 if (!html.includes("maximum-scale=1") || !html.includes("user-scalable=no") || !html.includes("zoom-lock-script-v340")) throw new Error("Zoom lock missing");
-if (!worker.includes("web_auth_sessions") || !worker.includes("startPayload.startsWith(\"web_\")")) throw new Error("Bot web-auth flow missing");
-console.log("Love Letter Official 3.4.0 build: PASS");
+if (!worker.includes("telegram_oidc_sessions") || !worker.includes("https://oauth.telegram.org/auth") || !worker.includes("https://oauth.telegram.org/token")) throw new Error("Telegram OIDC server flow missing");
+if (!worker.includes("/api/admin/stats") || !worker.includes("/api/presence")) throw new Error("Admin statistics/presence APIs missing");
+if (!worker.includes("/webon") || !worker.includes("/weboff") || !worker.includes("/stats")) throw new Error("Owner web/stat commands missing");
+if (!html.includes("ownerStatsValues")) throw new Error("Owner statistics UI missing");
+console.log("Love Letter Official 3.4.4 build: PASS");

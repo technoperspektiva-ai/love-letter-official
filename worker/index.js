@@ -1,4 +1,4 @@
-const VERSION = "3.4.0";
+const VERSION = "3.4.4";
 const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
@@ -54,7 +54,9 @@ function cfg(env) {
     freeLimit: Math.max(0, Number(env.MONTHLY_FREE_LIMIT || 3)),
     letterPrice: Math.max(1, Number(env.LETTER_PRICE_XTR || 25)),
     authMaxAge: Math.max(60, Number(env.AUTH_MAX_AGE_SECONDS || 86400)),
-    support: String(env.SUPPORT_CONTACT || "@loveletter_official_bot")
+    support: String(env.SUPPORT_CONTACT || "@loveletter_official_bot"),
+    telegramLoginClientId: String(env.TELEGRAM_LOGIN_CLIENT_ID || ""),
+    telegramLoginClientSecret: String(env.TELEGRAM_LOGIN_CLIENT_SECRET || "")
   };
 }
 
@@ -92,6 +94,20 @@ function b64urlDecodeText(value) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return new TextDecoder().decode(bytes);
+}
+
+function b64urlDecodeBytes(value) {
+  let base64 = String(value || "").replaceAll("-", "+").replaceAll("_", "/");
+  while (base64.length % 4) base64 += "=";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function pkceChallenge(verifier) {
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(verifier));
+  return b64urlEncodeBytes(new Uint8Array(digest));
 }
 
 function parseCookies(request) {
@@ -243,6 +259,21 @@ async function ensureSchema(env) {
   ).run();
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_users_ref_code ON telegram_users(ref_code)").run();
 
+  const userInfo = await env.DB.prepare("PRAGMA table_info(telegram_users)").all();
+  const userCols = new Set((userInfo.results || []).map(r => r.name));
+  if (!userCols.has("phone_number")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN phone_number TEXT").run();
+  if (!userCols.has("last_seen_at")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN last_seen_at INTEGER").run();
+  if (!userCols.has("bot_started_at")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN bot_started_at INTEGER").run();
+  if (!userCols.has("web_login_at")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN web_login_at INTEGER").run();
+  if (!userCols.has("miniapp_login_at")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN miniapp_login_at INTEGER").run();
+  if (!userCols.has("last_auth_source")) await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN last_auth_source TEXT").run();
+
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS telegram_oidc_sessions (" +
+    "state TEXT PRIMARY KEY, code_verifier TEXT NOT NULL, return_to TEXT NOT NULL DEFAULT '/', created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)"
+  ).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_oidc_expires ON telegram_oidc_sessions(expires_at)").run();
+
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS monthly_usage (telegram_id TEXT NOT NULL, month_key TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0, free_limit INTEGER NOT NULL DEFAULT 3, updated_at INTEGER NOT NULL, PRIMARY KEY(telegram_id,month_key))"
   ).run();
@@ -346,6 +377,41 @@ async function setSetting(env, key, value) {
 
 async function browserAccessEnabled(env) {
   return (await getSetting(env, "browser_access_enabled", "0")) === "1";
+}
+
+async function markUserActivity(env, userId, source = "") {
+  const now = Date.now();
+  const fields = ["last_seen_at=?", "updated_at=?"];
+  const values = [now, now];
+  if (source === "telegram") { fields.push("miniapp_login_at=COALESCE(miniapp_login_at,?)", "last_auth_source=?"); values.push(now, "miniapp"); }
+  if (source === "browser") { fields.push("last_auth_source=?"); values.push("web"); }
+  values.push(String(userId));
+  await env.DB.prepare(`UPDATE telegram_users SET ${fields.join(",")} WHERE telegram_id=?`).bind(...values).run();
+}
+
+async function adminStats(request, env) {
+  let auth;
+  try { auth = await authenticatedUser(request, env, { allowBrowserWhenDisabled: true }); }
+  catch (error) { return json({ error: error.code || "auth_error", message: error.message }, error.status || 401); }
+  if (String(auth.userId) !== OWNER_TELEGRAM_ID) return json({ error: "forbidden" }, 403);
+  const now = Date.now();
+  const onlineSince = now - 5 * 60 * 1000;
+  const [total, online, botUsers, webUsers, miniUsers] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users").first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE COALESCE(last_seen_at,0)>=?").bind(onlineSince).first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE bot_started_at IS NOT NULL").first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE web_login_at IS NOT NULL").first(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE miniapp_login_at IS NOT NULL").first()
+  ]);
+  return json({ ok:true, total:Number(total?.n||0), online:Number(online?.n||0), botUsers:Number(botUsers?.n||0), webUsers:Number(webUsers?.n||0), miniAppUsers:Number(miniUsers?.n||0), onlineWindowMinutes:5 });
+}
+
+async function presenceApi(request, env) {
+  let auth;
+  try { auth = await authenticatedUser(request, env, { allowBrowserWhenDisabled: true }); }
+  catch (error) { return json({ error: error.code || "auth_error", message: error.message }, error.status || 401); }
+  await markUserActivity(env, auth.userId, auth.a?.source || "");
+  return json({ ok:true, at:Date.now() });
 }
 
 async function publicConfig(env) {
@@ -607,6 +673,9 @@ async function telegramSetup(env) {
         { command: "gift", description: "Видати листи за @username" },
         { command: "give", description: "Видати листи за @username" },
         { command: "web", description: "Відкрити веб-версію" },
+        { command: "webon", description: "Увімкнути веб-доступ" },
+        { command: "weboff", description: "Вимкнути веб-доступ" },
+        { command: "stats", description: "Статистика користувачів" },
         { command: "support", description: "Підтримка" },
         { command: "paysupport", description: "Підтримка платежів" }
       ]
@@ -668,6 +737,93 @@ function validatePayload(payload) {
   return "";
 }
 
+
+async function verifyTelegramOidcIdToken(idToken, env, expectedNonce = "") {
+  const parts = String(idToken || "").split(".");
+  if (parts.length !== 3) throw new Error("Некоректний Telegram id_token");
+  const header = JSON.parse(b64urlDecodeText(parts[0]));
+  const claims = JSON.parse(b64urlDecodeText(parts[1]));
+  if (header.alg !== "RS256") throw new Error(`Telegram Login: непідтримуваний alg ${header.alg || "?"}`);
+  const jwksRes = await fetch("https://oauth.telegram.org/.well-known/jwks.json", { cf: { cacheTtl: 3600, cacheEverything: true } });
+  if (!jwksRes.ok) throw new Error("Не вдалося отримати Telegram JWKS");
+  const jwks = await jwksRes.json();
+  const jwk = (jwks.keys || []).find(k => k.kid === header.kid) || (jwks.keys || [])[0];
+  if (!jwk) throw new Error("Telegram JWKS key not found");
+  const key = await crypto.subtle.importKey("jwk", jwk, { name:"RSASSA-PKCS1-v1_5", hash:"SHA-256" }, false, ["verify"]);
+  const valid = await crypto.subtle.verify({ name:"RSASSA-PKCS1-v1_5" }, key, b64urlDecodeBytes(parts[2]), enc.encode(`${parts[0]}.${parts[1]}`));
+  if (!valid) throw new Error("Telegram id_token signature invalid");
+  const c = cfg(env);
+  const audOk = Array.isArray(claims.aud) ? claims.aud.map(String).includes(String(c.telegramLoginClientId)) : String(claims.aud || "") === String(c.telegramLoginClientId);
+  if (claims.iss !== "https://oauth.telegram.org" || !audOk) throw new Error("Telegram id_token claims invalid");
+  if (Number(claims.exp || 0) <= Math.floor(Date.now()/1000)) throw new Error("Telegram id_token expired");
+  if (expectedNonce && claims.nonce && claims.nonce !== expectedNonce) throw new Error("Telegram Login nonce mismatch");
+  return claims;
+}
+
+async function telegramOidcStart(request, env) {
+  if (!(await browserAccessEnabled(env))) return Response.redirect(`${cfg(env).appOrigin}/?web=disabled`, 302);
+  const c = cfg(env);
+  if (!c.telegramLoginClientId || !c.telegramLoginClientSecret) return json({ error:"telegram_login_not_configured", message:"Додай TELEGRAM_LOGIN_CLIENT_ID та TELEGRAM_LOGIN_CLIENT_SECRET у Cloudflare Variables." }, 503);
+  await ensureSchema(env);
+  const state = randomToken(40);
+  const verifier = randomToken(72);
+  const challenge = await pkceChallenge(verifier);
+  const now = Date.now();
+  const callback = `${c.appOrigin}/api/auth/telegram/oidc/callback`;
+  await env.DB.prepare("DELETE FROM telegram_oidc_sessions WHERE expires_at<?").bind(now).run().catch(()=>{});
+  await env.DB.prepare("INSERT INTO telegram_oidc_sessions (state,code_verifier,return_to,created_at,expires_at) VALUES (?,?,?,?,?)")
+    .bind(state, verifier, "/", now, now + 10*60*1000).run();
+  const auth = new URL("https://oauth.telegram.org/auth");
+  auth.searchParams.set("client_id", c.telegramLoginClientId);
+  auth.searchParams.set("redirect_uri", callback);
+  auth.searchParams.set("response_type", "code");
+  auth.searchParams.set("scope", "openid profile phone telegram:bot_access");
+  auth.searchParams.set("state", state);
+  auth.searchParams.set("code_challenge", challenge);
+  auth.searchParams.set("code_challenge_method", "S256");
+  return Response.redirect(auth.toString(), 302);
+}
+
+async function telegramOidcCallback(request, env) {
+  const c = cfg(env);
+  const url = new URL(request.url);
+  const code = String(url.searchParams.get("code") || "");
+  const state = String(url.searchParams.get("state") || "");
+  if (!code || !state) return Response.redirect(`${c.appOrigin}/?telegram_login=error&reason=missing_code`, 302);
+  await ensureSchema(env);
+  const row = await env.DB.prepare("SELECT * FROM telegram_oidc_sessions WHERE state=?").bind(state).first();
+  if (!row || Number(row.expires_at || 0) < Date.now()) return Response.redirect(`${c.appOrigin}/?telegram_login=error&reason=expired`, 302);
+  const callback = `${c.appOrigin}/api/auth/telegram/oidc/callback`;
+  const basic = btoa(`${c.telegramLoginClientId}:${c.telegramLoginClientSecret}`);
+  const body = new URLSearchParams({ grant_type:"authorization_code", code, redirect_uri:callback, client_id:c.telegramLoginClientId, code_verifier:String(row.code_verifier) });
+  const tokenRes = await fetch("https://oauth.telegram.org/token", { method:"POST", headers:{ "content-type":"application/x-www-form-urlencoded", "authorization":`Basic ${basic}` }, body:body.toString() });
+  const tokenData = await tokenRes.json().catch(()=>({}));
+  if (!tokenRes.ok || !tokenData.id_token) {
+    await env.DB.prepare("DELETE FROM telegram_oidc_sessions WHERE state=?").bind(state).run().catch(()=>{});
+    return Response.redirect(`${c.appOrigin}/?telegram_login=error&reason=token`, 302);
+  }
+  try {
+    const claims = await verifyTelegramOidcIdToken(tokenData.id_token, env);
+    const tg = {
+      id: String(claims.id || claims.sub),
+      username: claims.preferred_username || "",
+      first_name: claims.given_name || claims.name || "",
+      last_name: claims.family_name || "",
+      photo_url: claims.picture || "",
+      language_code: ""
+    };
+    const user = await ensureUser(env, tg, "");
+    const now = Date.now();
+    await env.DB.prepare("UPDATE telegram_users SET phone_number=?,web_login_at=?,last_seen_at=?,last_auth_source='web',updated_at=? WHERE telegram_id=?")
+      .bind(claims.phone_number || null, now, now, now, String(user.telegram_id)).run();
+    const session = await createBrowserSession(tg, env.TELEGRAM_BOT_TOKEN);
+    await env.DB.prepare("DELETE FROM telegram_oidc_sessions WHERE state=?").bind(state).run();
+    return new Response(null, { status:302, headers:{ location:`${c.appOrigin}/?telegram_login=ok`, "set-cookie":`ll_tg_session=${session}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`, "cache-control":"no-store" } });
+  } catch (error) {
+    console.error("telegram oidc callback", error);
+    return Response.redirect(`${c.appOrigin}/?telegram_login=error&reason=verify`, 302);
+  }
+}
 
 async function telegramLoginCallback(request, env) {
   try {
@@ -947,6 +1103,7 @@ async function accountApi(request, env) {
   let auth;
   try { auth = await authenticatedUser(request, env); }
   catch (error) { return json({ error: error.code || "auth_error", message: error.message }, error.status || 401); }
+  await markUserActivity(env, auth.userId, auth.a?.source || "");
   return json({ ok: true, ...(await accountSnapshot(env, auth.userId)) });
 }
 
@@ -1006,6 +1163,9 @@ async function webhook(request, env) {
     // persist the ref payload before the command message is cleaned up.
     if (message.from?.id) {
       try { await ensureUser(env, message.from, startPayload); } catch (_) {}
+      const now = Date.now();
+      await env.DB.prepare("UPDATE telegram_users SET bot_started_at=COALESCE(bot_started_at,?),last_seen_at=?,last_auth_source='bot',updated_at=? WHERE telegram_id=?")
+        .bind(now, now, now, senderId).run().catch(()=>{});
     }
 
     if (command === "/start" && startPayload.startsWith("web_")) {
@@ -1055,6 +1215,24 @@ async function webhook(request, env) {
           { reply_markup: miniAppKeyboard(env) }
         );
       }
+    } else if (command === "/webon" || command === "/weboff") {
+      if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
+      const enabled = command === "/webon";
+      await setSetting(env, "browser_access_enabled", enabled ? "1" : "0");
+      await sendBotText(env, message.chat.id, enabled ? "✅ Веб-доступ увімкнено." : "🔒 Веб-доступ вимкнено.", { reply_markup: adminKeyboard(env) });
+    } else if (command === "/stats") {
+      if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
+      const now=Date.now(), since=now-5*60*1000;
+      const total=await env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users").first();
+      const online=await env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE COALESCE(last_seen_at,0)>=?").bind(since).first();
+      const botUsers=await env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE bot_started_at IS NOT NULL").first();
+      const webUsers=await env.DB.prepare("SELECT COUNT(*) AS n FROM telegram_users WHERE web_login_at IS NOT NULL").first();
+      await sendBotText(env, message.chat.id, `📊 Love Letter
+
+👥 Всього: ${Number(total?.n||0)}
+🟢 Онлайн (5 хв): ${Number(online?.n||0)}
+🤖 Запускали бота: ${Number(botUsers?.n||0)}
+🌐 Web-login: ${Number(webUsers?.n||0)}`, { reply_markup: adminKeyboard(env) });
     } else if (command === "/web") {
       if (!(await browserAccessEnabled(env))) {
         await sendBotText(env, message.chat.id,
@@ -1155,8 +1333,12 @@ export default {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
       if (url.pathname === "/api/public/config" && request.method === "GET") return await publicConfig(env);
       if (url.pathname === "/api/admin/browser-access" && (request.method === "GET" || request.method === "POST")) return await adminBrowserAccess(request, env);
+      if (url.pathname === "/api/admin/stats" && request.method === "GET") return await adminStats(request, env);
+      if (url.pathname === "/api/presence" && request.method === "POST") return await presenceApi(request, env);
       if (url.pathname === "/api/telegram/status" && request.method === "GET") return await telegramStatus(env);
       if (url.pathname === "/api/telegram/setup" && request.method === "GET") return await telegramSetup(env);
+      if (url.pathname === "/api/auth/telegram/oidc/start" && request.method === "GET") return await telegramOidcStart(request, env);
+      if (url.pathname === "/api/auth/telegram/oidc/callback" && request.method === "GET") return await telegramOidcCallback(request, env);
       if (url.pathname === "/api/auth/telegram/link/start" && request.method === "POST") return await startBrowserTelegramAuth(env);
       if (url.pathname === "/api/auth/telegram/link/status" && request.method === "GET") return await browserTelegramAuthStatus(request, env);
       if (url.pathname === "/api/auth/telegram/link/consume" && request.method === "GET") return await consumeBrowserTelegramAuth(request, env);
