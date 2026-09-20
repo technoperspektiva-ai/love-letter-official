@@ -1,4 +1,5 @@
-const VERSION = "3.3.3";
+const VERSION = "3.3.4";
+const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -391,19 +392,37 @@ async function restoreCredit(env, userId, source) {
   }
 }
 
-async function sendBotText(env, chatId, text, htmlMode = false) {
+async function sendBotText(env, chatId, text, options = {}) {
   if (!env.TELEGRAM_BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not configured");
   if (!chatId) throw new Error("Telegram chat_id is missing");
+  if (typeof options === "boolean") options = options ? { parse_mode: "HTML" } : {};
   const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, ...(htmlMode ? { parse_mode: "HTML" } : {}) })
+    body: JSON.stringify({ chat_id: chatId, text, ...options })
   });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data?.ok) {
     throw new Error(`Telegram sendMessage failed: ${data?.description || response.status}`);
   }
   return data.result;
+}
+
+function miniAppKeyboard(env) {
+  return {
+    inline_keyboard: [[
+      { text: "💌 Розпочати Love Letter", web_app: { url: cfg(env).appOrigin } }
+    ]]
+  };
+}
+
+function adminKeyboard(env) {
+  return {
+    inline_keyboard: [
+      [{ text: "💌 Відкрити Mini App", web_app: { url: cfg(env).appOrigin } }],
+      [{ text: "🎁 Як видати листи", callback_data: "admin_help_gift" }]
+    ]
+  };
 }
 
 async function telegramStatus(env) {
@@ -714,6 +733,18 @@ async function webhook(request, env) {
   if (secret && request.headers.get("x-telegram-bot-api-secret-token") !== secret) return json({ error: "forbidden" }, 403);
 
   const update = await request.json();
+
+  if (update.callback_query) {
+    const q = update.callback_query;
+    await telegramCall(env, "answerCallbackQuery", { callback_query_id: q.id }).catch(() => {});
+    if (String(q.from?.id || "") === OWNER_TELEGRAM_ID && q.data === "admin_help_gift") {
+      await sendBotText(env, q.message?.chat?.id || q.from.id,
+        "🎁 Видача безкоштовних листів\n\n/gift @username 3\n/give @username 1\n\nКористувач має хоча б один раз запустити бота або увійти в Love Letter через Telegram."
+      );
+    }
+    return json({ ok: true });
+  }
+
   if (update.pre_checkout_query) {
     const q = update.pre_checkout_query;
     const payment = await env.DB.prepare("SELECT * FROM payments WHERE invoice_payload=?").bind(q.invoice_payload).first();
@@ -746,22 +777,51 @@ async function webhook(request, env) {
   if (message?.text && message?.chat?.id) {
     const parts = message.text.trim().split(/\s+/);
     const command = parts[0].toLowerCase().split("@")[0];
-    const senderUsername = String(message.from?.username || "").replace(/^@/, "").toLowerCase();
+    const senderId = String(message.from?.id || "");
+    const isOwner = senderId === OWNER_TELEGRAM_ID;
+
+    // Register/update every Telegram user who talks to the bot. This makes username gifting reliable.
+    if (message.from?.id) {
+      try { await ensureUser(env, message.from, ""); } catch (_) {}
+    }
 
     if (command === "/start") {
-      await sendBotText(env, message.chat.id, "💌 Love Letter\n\nСтвори особистий цифровий лист. Перші 3 листи щомісяця — безкоштовно.");
+      if (isOwner) {
+        await sendBotText(env, message.chat.id,
+          "👑 Love Letter · Адмін\n\nТи авторизований як власник.\n\nКоманди:\n/gift @username 3 — видати листи\n/give @username 1 — те саме коротко\n/help — допомога та список команд\n/support — контакт підтримки\n\n3 безкоштовні листи на місяць для звичайних користувачів, далі — 25⭐ за лист.",
+          { reply_markup: adminKeyboard(env) }
+        );
+      } else {
+        const name = String(message.from?.first_name || "").trim();
+        await sendBotText(env, message.chat.id,
+          `💌 Привіт${name ? `, ${name}` : ""}!\n\nЛаскаво просимо до Love Letter — тут можна створити красивий особистий цифровий лист для важливої людини.\n\n✨ 3 листи щомісяця безкоштовно.\n⭐ Далі — 25 Telegram Stars за лист.\n🎁 За друга, який створить свій перший лист, ти отримаєш +1 безкоштовний лист.\n\nНатисни кнопку нижче, щоб розпочати 👇`,
+          { reply_markup: miniAppKeyboard(env) }
+        );
+      }
+    } else if (command === "/help") {
+      if (isOwner) {
+        await sendBotText(env, message.chat.id,
+          "👑 Адмін-команди Love Letter\n\n/gift @username 3 — додати бонусні листи\n/give @username 1 — додати бонусні листи\n/support — підтримка\n/paysupport — підтримка платежів\n/start — адмін-меню\n\nПриклад: /gift @username 5",
+          { reply_markup: adminKeyboard(env) }
+        );
+      } else {
+        await sendBotText(env, message.chat.id,
+          "💌 Щоб створити лист, відкрий Love Letter кнопкою нижче.\n\nЯкщо потрібна допомога — /support",
+          { reply_markup: miniAppKeyboard(env) }
+        );
+      }
     } else if (command === "/support" || command === "/paysupport") {
-      await sendBotText(env, message.chat.id, `Підтримка Love Letter: ${cfg(env).support}`);
+      await sendBotText(env, message.chat.id, `Підтримка Love Letter: ${cfg(env).support}`, { reply_markup: miniAppKeyboard(env) });
     } else if (command === "/gift" || command === "/give") {
-      if (senderUsername !== "hodynnyk") {
-        await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику.");
+      if (!isOwner) {
+        await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику.", { reply_markup: miniAppKeyboard(env) });
         return json({ ok: true });
       }
 
       const targetUsername = String(parts[1] || "").replace(/^@/, "").trim();
       const amount = Number.parseInt(parts[2] || "1", 10);
       if (!targetUsername || !Number.isInteger(amount) || amount < 1 || amount > 1000) {
-        await sendBotText(env, message.chat.id, "Формат: /gift @username 3\nКількість: від 1 до 1000 листів.");
+        await sendBotText(env, message.chat.id, "Формат: /gift @username 3\nКількість: від 1 до 1000 листів.", { reply_markup: adminKeyboard(env) });
         return json({ ok: true });
       }
 
@@ -770,7 +830,7 @@ async function webhook(request, env) {
       ).bind(targetUsername).first();
 
       if (!target) {
-        await sendBotText(env, message.chat.id, `Не знайшов @${targetUsername}. Користувач має хоча б один раз увійти в Love Letter через Telegram.`);
+        await sendBotText(env, message.chat.id, `Не знайшов @${targetUsername}. Нехай користувач спочатку натисне /start у боті або увійде в Love Letter через Telegram.`, { reply_markup: adminKeyboard(env) });
         return json({ ok: true });
       }
 
@@ -785,13 +845,20 @@ async function webhook(request, env) {
       await sendBotText(
         env,
         message.chat.id,
-        `✅ @${target.username || targetUsername}: +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.\nБонусний баланс: ${Number(updated?.bonus_credits || 0)}.`
+        `✅ @${target.username || targetUsername}: +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.\nБонусний баланс: ${Number(updated?.bonus_credits || 0)}.`,
+        { reply_markup: adminKeyboard(env) }
       );
       sendBotText(
         env,
         target.telegram_id,
-        `🎁 Власник Love Letter подарував тобі +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.`
+        `🎁 Власник Love Letter подарував тобі +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.`,
+        { reply_markup: miniAppKeyboard(env) }
       ).catch(() => {});
+    } else if (command.startsWith("/")) {
+      await sendBotText(env, message.chat.id,
+        isOwner ? "Не знаю такої адмін-команди. Натисни /help, щоб побачити список." : "Не знаю такої команди. Натисни /start, щоб відкрити Love Letter.",
+        { reply_markup: isOwner ? adminKeyboard(env) : miniAppKeyboard(env) }
+      );
     }
   }
 

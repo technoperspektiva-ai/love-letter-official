@@ -21,15 +21,25 @@ console.log(`Bot: @${me.username}`);
 await call("setWebhook", {
   url: `${origin}/api/telegram/webhook`,
   secret_token: secret,
-  allowed_updates: ["message", "pre_checkout_query"]
+  allowed_updates: ["message", "pre_checkout_query", "callback_query"]
 });
 await call("setMyCommands", {
+  scope: { type: "default" },
   commands: [
     { command: "start", description: "Відкрити Love Letter" },
+    { command: "help", description: "Допомога" },
+    { command: "support", description: "Підтримка" }
+  ]
+});
+await call("setMyCommands", {
+  scope: { type: "chat", chat_id: 375938798 },
+  commands: [
+    { command: "start", description: "Адмін-меню" },
+    { command: "help", description: "Адмін-команди" },
+    { command: "gift", description: "Видати листи за @username" },
+    { command: "give", description: "Видати листи за @username" },
     { command: "support", description: "Підтримка" },
-    { command: "paysupport", description: "Підтримка платежів" },
-    { command: "gift", description: "Видати безкоштовні листи (власник)" },
-    { command: "give", description: "Видати безкоштовні листи (власник)" }
+    { command: "paysupport", description: "Підтримка платежів" }
   ]
 });
 await call("setMyDescription", { description: "Особисті цифрові листи з маленькою магією. 3 листи щомісяця безкоштовно." });

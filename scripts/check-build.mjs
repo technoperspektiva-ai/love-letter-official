@@ -18,6 +18,9 @@ if (!html.includes("Мої покупки")) throw new Error("Visible purchases 
 if (!html.includes("/api/payments")) throw new Error("Payments history API usage missing");
 if (!html.includes("Підтримка оплати")) throw new Error("Payment support CTA missing");
 const worker = fs.readFileSync("worker/index.js", "utf8");
-if (!worker.includes("senderUsername !== \"hodynnyk\"")) throw new Error("Owner gift guard missing");
+if (!worker.includes('const OWNER_TELEGRAM_ID = "375938798"')) throw new Error("Owner Telegram ID guard missing");
 if (!worker.includes("/gift")) throw new Error("Owner gift command missing");
-console.log("Love Letter Official 3.3.3 build: PASS");
+if (!worker.includes("message.from?.id")) throw new Error("Telegram sender ID handling missing");
+if (!worker.includes("Розпочати Love Letter")) throw new Error("Mini App welcome button missing");
+if (!worker.includes("/help")) throw new Error("Help command missing");
+console.log("Love Letter Official 3.3.4 build: PASS");
