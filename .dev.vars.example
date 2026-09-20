@@ -1,4 +1,0 @@
-TELEGRAM_BOT_TOKEN=123456789:replace_me
-TELEGRAM_WEBHOOK_SECRET=replace_with_long_random_secret
-# Local-only. Never set true in production.
-DEV_BYPASS_AUTH=true
