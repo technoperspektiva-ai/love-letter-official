@@ -105,6 +105,11 @@ Before production deploy run `npm run check:config`. GitHub CI runs syntax, unit
 
 ## Version
 
-`1.2.0`
+`1.2.1`
 
 See `DEPLOY.md` for launch steps.
+
+
+## 1.2.1 runtime bootstrap fix
+
+If Telegram shows a branded loading screen but the API returns HTML/static content, the Mini App now detects that the Cloudflare Worker backend is not active instead of reporting a generic JSON error. The frontend also probes `/api/health` before starting the authenticated session and uses a fresh Service Worker cache.
