@@ -9,6 +9,5 @@
 
 Required Worker secrets:
 - `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_WEBHOOK_SECRET`
 
 After deploying, run `npm run bot:setup` with the same values in the environment so the webhook secret matches the Worker secret.

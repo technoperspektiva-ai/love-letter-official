@@ -33,7 +33,6 @@
 ## Required Worker secrets
 
 - `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_WEBHOOK_SECRET`
 
 ## Existing production vars
 
@@ -50,7 +49,6 @@
 npm install
 npm run check
 npx wrangler secret put TELEGRAM_BOT_TOKEN
-npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
 npm run deploy
 npm run bot:setup
 ```

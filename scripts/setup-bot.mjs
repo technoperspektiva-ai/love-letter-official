@@ -1,9 +1,6 @@
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const origin = (process.env.APP_ORIGIN || "https://love-letter-official.black-sci-official.workers.dev").replace(/\/$/, "");
-const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-
 if (!token) throw new Error("TELEGRAM_BOT_TOKEN is required");
-if (!secret) throw new Error("TELEGRAM_WEBHOOK_SECRET is required");
 
 async function call(method, payload = {}) {
   const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -20,7 +17,6 @@ const me = await call("getMe");
 console.log(`Bot: @${me.username}`);
 await call("setWebhook", {
   url: `${origin}/api/telegram/webhook`,
-  secret_token: secret,
   allowed_updates: ["message", "pre_checkout_query", "callback_query"]
 });
 await call("setMyCommands", {

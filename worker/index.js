@@ -425,6 +425,49 @@ function adminKeyboard(env) {
   };
 }
 
+
+async function telegramSetup(env) {
+  if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, error: "TELEGRAM_BOT_TOKEN is not configured" }, 503);
+  const origin = cfg(env).appOrigin.replace(/\/$/, "");
+  const webhookUrl = `${origin}/api/telegram/webhook`;
+  try {
+    const webhook = await telegramCall(env, "setWebhook", {
+      url: webhookUrl,
+      allowed_updates: ["message", "pre_checkout_query", "callback_query"],
+      drop_pending_updates: false
+    });
+    await telegramCall(env, "setMyCommands", {
+      scope: { type: "default" },
+      commands: [
+        { command: "start", description: "Відкрити Love Letter" },
+        { command: "help", description: "Допомога" },
+        { command: "support", description: "Підтримка" }
+      ]
+    });
+    await telegramCall(env, "setMyCommands", {
+      scope: { type: "chat", chat_id: Number(OWNER_TELEGRAM_ID) },
+      commands: [
+        { command: "start", description: "Адмін-меню" },
+        { command: "help", description: "Адмін-команди" },
+        { command: "gift", description: "Видати листи за @username" },
+        { command: "give", description: "Видати листи за @username" },
+        { command: "support", description: "Підтримка" },
+        { command: "paysupport", description: "Підтримка платежів" }
+      ]
+    });
+    const info = await telegramCall(env, "getWebhookInfo");
+    return json({
+      ok: true,
+      webhook_installed: Boolean(webhook),
+      webhook: info?.url || webhookUrl,
+      pending_update_count: info?.pending_update_count || 0,
+      message: "Webhook встановлено. Тепер відкрийте бота і натисніть /start."
+    });
+  } catch (error) {
+    return json({ ok: false, error: String(error?.message || error) }, 502);
+  }
+}
+
 async function telegramStatus(env) {
   if (!env.TELEGRAM_BOT_TOKEN) return json({ ok: false, token_configured: false, error: "TELEGRAM_BOT_TOKEN is not configured" }, 503);
   const [meRes, hookRes] = await Promise.all([
@@ -445,7 +488,7 @@ async function telegramStatus(env) {
       max_connections: hook.result.max_connections
     } : null,
     expected_webhook: `${cfg(env).appOrigin}/api/telegram/webhook`,
-    webhook_secret_configured: Boolean(env.TELEGRAM_WEBHOOK_SECRET),
+    webhook_security: "telegram_bot_token_only",
     telegram_error: (!me?.ok ? me?.description : null) || (!hook?.ok ? hook?.description : null) || null
   }, me?.ok && hook?.ok ? 200 : 502);
 }
@@ -729,9 +772,6 @@ async function accountApi(request, env) {
 
 async function webhook(request, env) {
   await ensureSchema(env);
-  const secret = env.TELEGRAM_WEBHOOK_SECRET;
-  if (secret && request.headers.get("x-telegram-bot-api-secret-token") !== secret) return json({ error: "forbidden" }, 403);
-
   const update = await request.json();
 
   if (update.callback_query) {
@@ -888,6 +928,7 @@ export default {
     try {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
       if (url.pathname === "/api/telegram/status" && request.method === "GET") return await telegramStatus(env);
+      if (url.pathname === "/api/telegram/setup" && request.method === "GET") return await telegramSetup(env);
       if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
       if (url.pathname === "/api/auth/logout" && request.method === "POST") return await logoutBrowser();
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);

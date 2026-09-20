@@ -10,7 +10,7 @@ Product rules:
 - Payment credit is issued only from Telegram `successful_payment`, never from a frontend callback.
 - Duplicate successful payment processing is protected by payment status + unique charge id.
 - Bot webhook endpoint: `/api/telegram/webhook`.
-- Required secrets: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`.
+- Required secrets: `TELEGRAM_BOT_TOKEN`.
 
 Visible Mini App behavior:
 - Balance button shows total available letters.

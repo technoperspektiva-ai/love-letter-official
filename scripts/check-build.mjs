@@ -23,4 +23,4 @@ if (!worker.includes("/gift")) throw new Error("Owner gift command missing");
 if (!worker.includes("message.from?.id")) throw new Error("Telegram sender ID handling missing");
 if (!worker.includes("Розпочати Love Letter")) throw new Error("Mini App welcome button missing");
 if (!worker.includes("/help")) throw new Error("Help command missing");
-console.log("Love Letter Official 3.3.4 build: PASS");
+console.log("Love Letter Official 3.3.5 build: PASS");
