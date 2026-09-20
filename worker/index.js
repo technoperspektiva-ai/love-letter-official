@@ -1,4 +1,4 @@
-const VERSION = "3.1.0";
+const VERSION = "3.1.1";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -577,6 +577,20 @@ async function webhook(request, env) {
   return json({ ok: true });
 }
 
+async function freshAsset(request, env) {
+  const response = await env.ASSETS.fetch(request);
+  const headers = new Headers(response.headers);
+  const type = headers.get("content-type") || "";
+  if (type.includes("text/html")) {
+    headers.set("cache-control", "no-store, no-cache, must-revalidate");
+    headers.set("cdn-cache-control", "no-store");
+    headers.set("pragma", "no-cache");
+    headers.set("expires", "0");
+  }
+  headers.set("x-love-letter-build", VERSION);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -601,11 +615,11 @@ export default {
       if (regenerateMatch && request.method === "POST") return await regenerateStoryUrl(request, regenerateMatch[1], env);
 
       if (/^\/l\/[A-Za-z0-9_-]{4,32}\/?$/.test(url.pathname) || /^\/edit\/[A-Za-z0-9_-]{4,32}\/?$/.test(url.pathname)) {
-        return env.ASSETS.fetch(request);
+        return freshAsset(request, env);
       }
 
       if (url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
-      return env.ASSETS.fetch(request);
+      return freshAsset(request, env);
     } catch (err) {
       console.error(err);
       return json({ error: "server_error", message: String(err?.message || err) }, 500);
