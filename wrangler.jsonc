@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "love-letter-official",
+  "main": "./src/index.js",
+  "compatibility_date": "2026-09-20",
+  "workers_dev": true,
+  "vars": {
+    "APP_ORIGIN": "https://love-letter-official.black-sci-official.workers.dev",
+    "BOT_USERNAME": "loveletter_official_bot",
+    "MONTHLY_FREE_LIMIT": "3",
+    "LETTER_PRICE_XTR": "29",
+    "AUTH_MAX_AGE_SECONDS": "86400",
+    "DEV_BYPASS_AUTH": "false",
+    "SUPPORT_CONTACT": "@loveletter_official_bot"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "love-letter-official-db",
+      "database_id": "3dba6dff-50ad-4875-8fe1-f6becf86df57"
+    }
+  ]
+}
