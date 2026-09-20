@@ -1,6 +1,6 @@
-# Love Letter Official 3.3.9
+# Love Letter Official 3.4.0
 
-Telegram-only creator mode + owner-controlled browser access. See `BROWSER-ACCESS-3.3.9.md`.
+Telegram-only creator mode + owner-controlled browser access. See `BROWSER-ACCESS-3.4.0.md`.
 
 # Love Letter Official 3.3.0 — Telegram Login + Commerce + Browser Compatibility
 
@@ -95,3 +95,10 @@ Owner `@hodynnyk` can grant bonus letters by Telegram username:
 `/gift @username 3`
 
 The target must have logged in to Love Letter through Telegram at least once so their username exists in D1. Granted letters are stored in `bonus_credits` and do not expire with the monthly free-letter reset.
+
+
+### Web mode 3.4.0
+- Responsive Safari/Chrome web mode can be enabled by the owner from the admin settings.
+- Browser Telegram authentication uses a one-time bot confirmation flow instead of the Telegram Login Widget, avoiding `Bot domain invalid`.
+- When browser access is disabled, author routes show a Telegram handoff screen; public recipient links remain browser-accessible.
+- Browser zoom is locked (pinch, double-tap, keyboard/trackpad zoom) while the layout remains responsive.

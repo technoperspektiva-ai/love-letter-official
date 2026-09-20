@@ -1,4 +1,4 @@
-const VERSION = "3.3.9";
+const VERSION = "3.4.0";
 const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
@@ -258,6 +258,12 @@ async function ensureSchema(env) {
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(telegram_id,created_at DESC)").run();
 
   await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS web_auth_sessions (" +
+    "token TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', telegram_id TEXT, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, authorized_at INTEGER, consumed_at INTEGER)"
+  ).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_web_auth_expires ON web_auth_sessions(expires_at)").run();
+
+  await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)"
   ).run();
 }
@@ -363,6 +369,52 @@ async function adminBrowserAccess(request, env) {
   const enabled = Boolean(body?.enabled);
   await setSetting(env, "browser_access_enabled", enabled ? "1" : "0");
   return json({ ok: true, enabled });
+}
+
+async function startBrowserTelegramAuth(env) {
+  if (!(await browserAccessEnabled(env))) return json({ error: "browser_access_disabled", message: "Доступ через браузер зараз вимкнений." }, 403);
+  await ensureSchema(env);
+  const token = randomToken(30);
+  const now = Date.now();
+  const expiresAt = now + 10 * 60 * 1000;
+  await env.DB.prepare("DELETE FROM web_auth_sessions WHERE expires_at<? OR consumed_at IS NOT NULL").bind(now - 60000).run().catch(() => {});
+  await env.DB.prepare(
+    "INSERT INTO web_auth_sessions (token,status,created_at,expires_at) VALUES (?,'pending',?,?)"
+  ).bind(token, now, expiresAt).run();
+  const c = cfg(env);
+  return json({
+    ok: true,
+    token,
+    expiresAt,
+    botUrl: `https://t.me/${c.botUsername}?start=web_${token}`
+  });
+}
+
+async function browserTelegramAuthStatus(request, env) {
+  if (!(await browserAccessEnabled(env))) return json({ error: "browser_access_disabled", message: "Доступ через браузер зараз вимкнений." }, 403);
+  await ensureSchema(env);
+  const url = new URL(request.url);
+  const token = String(url.searchParams.get("token") || "").trim();
+  if (!token) return json({ error: "token_required" }, 400);
+  const row = await env.DB.prepare("SELECT * FROM web_auth_sessions WHERE token=?").bind(token).first();
+  if (!row) return json({ ok: false, status: "missing" }, 404);
+  if (Number(row.expires_at || 0) < Date.now()) return json({ ok: false, status: "expired" }, 410);
+  if (row.status !== "authorized" || !row.telegram_id) return json({ ok: true, status: "pending" });
+  const user = await env.DB.prepare("SELECT * FROM telegram_users WHERE telegram_id=?").bind(String(row.telegram_id)).first();
+  if (!user) return json({ ok: false, status: "user_missing" }, 409);
+  const session = await createBrowserSession({
+    id: String(user.telegram_id), username: user.username || "", first_name: user.first_name || "", last_name: user.last_name || "", photo_url: user.photo_url || "", language_code: user.language_code || ""
+  }, env.TELEGRAM_BOT_TOKEN);
+  await env.DB.prepare("UPDATE web_auth_sessions SET consumed_at=? WHERE token=? AND consumed_at IS NULL").bind(Date.now(), token).run();
+  return new Response(JSON.stringify({ ok: true, status: "authorized" }), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "set-cookie": `ll_tg_session=${session}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`,
+      ...cors
+    }
+  });
 }
 
 async function accountSnapshot(env, userId) {
@@ -914,6 +966,25 @@ async function webhook(request, env) {
       try { await ensureUser(env, message.from, startPayload); } catch (_) {}
     }
 
+    if (command === "/start" && startPayload.startsWith("web_")) {
+      const token = startPayload.slice(4);
+      const now = Date.now();
+      const authRow = await env.DB.prepare("SELECT * FROM web_auth_sessions WHERE token=?").bind(token).first();
+      if (authRow && Number(authRow.expires_at || 0) >= now && !authRow.consumed_at) {
+        await env.DB.prepare(
+          "UPDATE web_auth_sessions SET status='authorized',telegram_id=?,authorized_at=? WHERE token=?"
+        ).bind(senderId, now, token).run();
+        await sendBotText(env, message.chat.id,
+          "✅ Вхід на сайт Love Letter підтверджено.\n\nПовернись у браузер — сторінка авторизується автоматично.",
+          { reply_markup: { inline_keyboard: [[{ text: "↩️ Повернутися в Love Letter", url: cfg(env).appOrigin }]] } }
+        );
+      } else {
+        await sendBotText(env, message.chat.id, "Посилання для входу застаріло. Повернись на сайт і натисни «Увійти через Telegram» ще раз.");
+      }
+      await deleteBotMessage(env, message.chat.id, message.message_id);
+      return json({ ok: true });
+    }
+
     if (command === "/start") {
       if (isOwner) {
         await sendBotText(env, message.chat.id,
@@ -1023,6 +1094,8 @@ export default {
       if (url.pathname === "/api/admin/browser-access" && (request.method === "GET" || request.method === "POST")) return await adminBrowserAccess(request, env);
       if (url.pathname === "/api/telegram/status" && request.method === "GET") return await telegramStatus(env);
       if (url.pathname === "/api/telegram/setup" && request.method === "GET") return await telegramSetup(env);
+      if (url.pathname === "/api/auth/telegram/link/start" && request.method === "POST") return await startBrowserTelegramAuth(env);
+      if (url.pathname === "/api/auth/telegram/link/status" && request.method === "GET") return await browserTelegramAuthStatus(request, env);
       if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
       if (url.pathname === "/api/auth/logout" && request.method === "POST") return await logoutBrowser();
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);
