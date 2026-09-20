@@ -1,7 +1,114 @@
 import { AuthError, answerPreCheckout, createStarsInvoiceLink, telegramApi, verifyTelegramInitData } from "./telegram.js";
 import { clampText, errorJson, id, json, monthKey, nextMonthIso, nowMs, safeStoryPayload, token } from "./helpers.js";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
+
+let schemaInitPromise = null;
+
+async function ensureSchema(env) {
+  if (!env.DB) throw new Error("D1 binding DB is missing");
+  if (schemaInitPromise) return schemaInitPromise;
+
+  schemaInitPromise = (async () => {
+    const statements = [
+      `CREATE TABLE IF NOT EXISTS telegram_users (
+        telegram_id TEXT PRIMARY KEY,
+        username TEXT,
+        first_name TEXT NOT NULL DEFAULT '',
+        last_name TEXT NOT NULL DEFAULT '',
+        photo_url TEXT,
+        language_code TEXT,
+        ref_code TEXT NOT NULL UNIQUE,
+        referred_by TEXT,
+        bonus_credits INTEGER NOT NULL DEFAULT 0 CHECK (bonus_credits >= 0),
+        paid_credits INTEGER NOT NULL DEFAULT 0 CHECK (paid_credits >= 0),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (referred_by) REFERENCES telegram_users(telegram_id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_users_ref_code ON telegram_users(ref_code)`,
+      `CREATE TABLE IF NOT EXISTS monthly_usage (
+        telegram_id TEXT NOT NULL,
+        month_key TEXT NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0),
+        free_limit INTEGER NOT NULL DEFAULT 3 CHECK (free_limit >= 0),
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (telegram_id, month_key),
+        FOREIGN KEY (telegram_id) REFERENCES telegram_users(telegram_id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS referrals (
+        id TEXT PRIMARY KEY,
+        inviter_id TEXT NOT NULL,
+        invited_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','qualified','rejected')),
+        created_at INTEGER NOT NULL,
+        qualified_at INTEGER,
+        UNIQUE (inviter_id, invited_id),
+        FOREIGN KEY (inviter_id) REFERENCES telegram_users(telegram_id) ON DELETE CASCADE,
+        FOREIGN KEY (invited_id) REFERENCES telegram_users(telegram_id) ON DELETE CASCADE
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id, status)`,
+      `CREATE TABLE IF NOT EXISTS stories (
+        id TEXT PRIMARY KEY,
+        public_token TEXT NOT NULL UNIQUE,
+        owner_telegram_id TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        title TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        credit_source TEXT NOT NULL CHECK (credit_source IN ('monthly','bonus','paid')),
+        client_request_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (owner_telegram_id) REFERENCES telegram_users(telegram_id) ON DELETE CASCADE
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_stories_owner ON stories(owner_telegram_id, created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_stories_public ON stories(public_token)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_stories_owner_request ON stories(owner_telegram_id, client_request_id)`,
+      `CREATE TABLE IF NOT EXISTS story_choices (
+        story_id TEXT PRIMARY KEY,
+        choice_index INTEGER NOT NULL,
+        chosen_at INTEGER NOT NULL,
+        FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS payments (
+        id TEXT PRIMARY KEY,
+        telegram_id TEXT NOT NULL,
+        invoice_payload TEXT NOT NULL UNIQUE,
+        stars INTEGER NOT NULL CHECK (stars > 0),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','canceled','refunded','failed')),
+        telegram_payment_charge_id TEXT UNIQUE,
+        provider_payment_charge_id TEXT,
+        created_at INTEGER NOT NULL,
+        paid_at INTEGER,
+        refunded_at INTEGER,
+        FOREIGN KEY (telegram_id) REFERENCES telegram_users(telegram_id) ON DELETE CASCADE
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(telegram_id, created_at DESC)`
+    ];
+
+    for (const sql of statements) await env.DB.prepare(sql).run();
+
+    const userInfo = await env.DB.prepare("PRAGMA table_info(telegram_users)").all();
+    const userColumns = new Set((userInfo.results || []).map(row => row.name));
+    if (!userColumns.has("terms_accepted_at")) {
+      await env.DB.prepare("ALTER TABLE telegram_users ADD COLUMN terms_accepted_at INTEGER").run();
+    }
+
+    const storyInfo = await env.DB.prepare("PRAGMA table_info(stories)").all();
+    const storyColumns = new Set((storyInfo.results || []).map(row => row.name));
+    if (!storyColumns.has("client_request_id")) {
+      await env.DB.prepare("ALTER TABLE stories ADD COLUMN client_request_id TEXT").run();
+      await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_stories_owner_request ON stories(owner_telegram_id, client_request_id)").run();
+    }
+  })();
+
+  try {
+    await schemaInitPromise;
+  } catch (error) {
+    schemaInitPromise = null;
+    throw error;
+  }
+}
 
 function config(env) {
   return {
@@ -534,6 +641,7 @@ async function handleWebhook(request, env) {
 
 async function handleApi(request, env, url) {
   const path = url.pathname;
+  await ensureSchema(env);
   if (path === "/api/health") {
     const count = await env.DB.prepare("SELECT COUNT(*) AS count FROM stories").first().catch(() => ({ count: 0 }));
     return json({ ok: true, db: true, stories: Number(count?.count || 0), version: APP_VERSION });
