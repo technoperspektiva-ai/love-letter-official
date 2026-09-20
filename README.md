@@ -1,31 +1,116 @@
-# Love Letter Official 2.0.0
+# great-jarvis
 
-A clean Worker-only Telegram Mini App rebuild.
+Telegram bot: `@greatjarvis_bot`
 
-## Why this build is different
+Architecture:
 
-- No Cloudflare Static Assets binding.
-- No Service Worker.
-- No separate frontend deploy.
-- One Worker serves the UI and API from the same script.
-- D1 schema self-initializes on the first API request.
-- Telegram initData is validated server-side.
-- 3 free letters per calendar month.
-- Referral +1 after the invited friend publishes their first letter.
-- Extra letter purchase via Telegram Stars.
-- Public recipient flow with one-time choice.
+`Telegram -> Cloudflare Worker -> OpenAI Responses API`
 
-## Required GitHub secrets
+Model selector:
 
-- CLOUDFLARE_API_TOKEN — must have Workers Scripts: Edit. D1: Edit is required by the runtime DB binding/account access.
-- CLOUDFLARE_ACCOUNT_ID
-- TELEGRAM_BOT_TOKEN
-- TELEGRAM_WEBHOOK_SECRET (optional; workflow generates one if missing)
+- GPT-5.6 (`gpt-5.6`)
+- GPT-6 Astra (`gpt-6-astra`)
 
-## Deploy
+## 1. Install
 
-Push to `main`. The `Deploy Production` workflow deploys automatically.
+```bash
+npm install
+npx wrangler login
+```
 
-## Health
+## 2. Create KV for per-user model selection
 
-`GET /api/health` should return version `2.0.0`.
+```bash
+npx wrangler kv namespace create USER_PREFS
+```
+
+Wrangler returns a namespace ID.
+
+Open `wrangler.toml` and uncomment:
+
+```toml
+[[kv_namespaces]]
+binding = "USER_PREFS"
+id = "YOUR_KV_NAMESPACE_ID"
+```
+
+## 3. Add secrets
+
+```bash
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+```
+
+Do not commit the real keys to GitHub.
+
+## 4. Deploy
+
+```bash
+npm run deploy
+```
+
+The Worker name is already:
+
+```text
+great-jarvis
+```
+
+## 5. Set Telegram webhook
+
+### PowerShell
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
+$env:WORKER_URL="https://great-jarvis.YOUR_SUBDOMAIN.workers.dev"
+$env:TELEGRAM_WEBHOOK_SECRET="YOUR_RANDOM_SECRET"
+
+npm run webhook:set
+```
+
+Then verify:
+
+```powershell
+npm run webhook:info
+```
+
+## Bot commands
+
+```text
+/start
+/model
+/current
+/help
+```
+
+`/model` opens buttons:
+
+- GPT-5.6
+- GPT-6 Astra
+
+The choice is stored per Telegram user in Cloudflare KV.
+
+## Health check
+
+Open:
+
+```text
+https://great-jarvis.YOUR_SUBDOMAIN.workers.dev/health
+```
+
+Expected:
+
+```text
+OK
+```
+
+## Logs
+
+```bash
+npm run tail
+```
+
+## Important
+
+OpenAI API billing is separate from a ChatGPT subscription.
+Access to a specific model also depends on what is enabled for your OpenAI API project/account.

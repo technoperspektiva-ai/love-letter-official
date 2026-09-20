@@ -1,14 +1,16 @@
 {
-  "name": "love-letter-official",
-  "version": "2.0.1",
+  "name": "great-jarvis",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node scripts/check-build.mjs"
+    "tail": "wrangler tail",
+    "webhook:set": "node scripts/set-webhook.mjs",
+    "webhook:info": "node scripts/webhook-info.mjs"
   },
   "devDependencies": {
-    "wrangler": "^4.68.0"
+    "wrangler": "^4.0.0"
   }
 }
