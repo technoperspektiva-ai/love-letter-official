@@ -85,15 +85,47 @@ function discardDraft(){ clearDraft(); if(state.route==="home") render(); else g
 
 async function api(path, options={}) {
   if (LOCAL_DEMO) return mockApi(path, options);
+
   const headers = new Headers(options.headers || {});
   if(options.body && !headers.has("content-type")) headers.set("content-type","application/json");
+
   const data = initData();
   if (data) headers.set("authorization",`tma ${data}`);
-  const response = await fetch(path,{...options,headers});
-  const payload = await response.json().catch(()=>({ok:false,error:"Некоректна відповідь сервера"}));
+
+  const response = await fetch(path,{
+    ...options,
+    headers,
+    cache: options.cache || (path === "/api/health" || path === "/api/session" ? "no-store" : "default")
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const raw = await response.text();
+
+  if (!contentType.includes("application/json")) {
+    const error = new Error("Сервіс ще не підключений. Спробуй оновити Love Letter за кілька секунд.");
+    error.status = response.status;
+    error.code = "BACKEND_NOT_ACTIVE";
+    error.contentType = contentType;
+    error.preview = raw.slice(0,120);
+    throw error;
+  }
+
+  let payload;
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    const error = new Error("Сервер відповів пошкодженими даними. Спробуй ще раз.");
+    error.status = response.status;
+    error.code = "INVALID_JSON";
+    throw error;
+  }
+
   if (!response.ok) {
     const error = new Error(payload.error || "Помилка запиту");
-    error.status=response.status; error.payload=payload; throw error;
+    error.status=response.status;
+    error.payload=payload;
+    error.code=payload.code || null;
+    throw error;
   }
   return payload;
 }
@@ -465,6 +497,7 @@ async function handleAction(action,el){
   if(action==="copy-ready"){await navigator.clipboard.writeText(state.ready.miniAppLink||`${location.origin}${state.ready.webPath}`);return toast("Посилання скопійовано")}
   if(action==="terms"){state.modal={type:"terms"};return render()}
   if(action==="support"){const bot=state.session.botUsername;if(bot)return openTelegram(`https://t.me/${bot}?text=${encodeURIComponent("/support")}`);return toast("Додай BOT_USERNAME")}
+  if(action==="retry-init"){location.reload();return}
   if(action==="open-envelope"){el.classList.add("is-opening");haptic("medium");setTimeout(()=>{state.recipientStage="letter";renderRecipient()},1050);return}
   if(action==="recipient-choices"){state.recipientStage=state.recipient.choiceIndex==null?"choices":"final";haptic("light");return renderRecipient()}
   if(action==="choose")return chooseRecipient(Number(el.dataset.index));
@@ -496,12 +529,19 @@ async function init(){
     return;
   }
   try{
+    await api("/api/health",{cache:"no-store"});
     const session=await api("/api/session",{method:"POST",body:"{}"});
     state.session=session;
     await loadStories();
     render();
   }catch(e){
     console.error(e);
+
+    if(e?.code==="BACKEND_NOT_ACTIVE"){
+      root.innerHTML=`<main class="page telegram-gate"><section class="ready-card"><img class="gate-logo" src="/brand/logo-icon.svg" alt=""><div class="kicker">Love Letter</div><h1>Ще мить — запускаємо сервіс.</h1><p>Інтерфейс уже відкрився, але Telegram зараз отримав статичну сторінку замість API. Онови застосунок після деплою Worker.</p><button class="primary full" data-action="retry-init">Спробувати ще раз</button></section></main>`;
+      return;
+    }
+
     root.innerHTML=`<div class="boot-screen"><div class="boot-seal">L</div><div class="boot-copy">${esc(e.message||"Не вдалося відкрити Love Letter")}</div></div>`;
   }
 }
