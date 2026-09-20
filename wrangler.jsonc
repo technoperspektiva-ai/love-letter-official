@@ -12,7 +12,7 @@
   },
   "vars": {
     "APP_NAME": "Love Letter",
-    "BOT_USERNAME": "REPLACE_WITH_BOT_USERNAME",
+    "BOT_USERNAME": "loveletter_official_bot",
     "MONTHLY_FREE_LIMIT": "3",
     "LETTER_PRICE_XTR": "29",
     "AUTH_MAX_AGE_SECONDS": "86400",
