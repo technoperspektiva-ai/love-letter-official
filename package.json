@@ -1,12 +1,12 @@
 {
   "name": "love-letter-official",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check src/index.js"
+    "check": "node scripts/check-build.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.68.0"
