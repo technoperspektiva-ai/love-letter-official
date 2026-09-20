@@ -31,6 +31,7 @@ if (!worker.includes("browser_access_enabled")) throw new Error("Browser access 
 if (!html.includes("maximum-scale=1") || !html.includes("user-scalable=no") || !html.includes("zoom-lock-script-v340")) throw new Error("Zoom lock missing");
 if (!worker.includes("telegram_oidc_sessions") || !worker.includes("https://oauth.telegram.org/auth") || !worker.includes("https://oauth.telegram.org/token")) throw new Error("Telegram OIDC server flow missing");
 if (!worker.includes("/api/admin/stats") || !worker.includes("/api/presence")) throw new Error("Admin statistics/presence APIs missing");
-if (!worker.includes("/webon") || !worker.includes("/weboff") || !worker.includes("/stats")) throw new Error("Owner web/stat commands missing");
+if (!worker.includes("/webon") || !worker.includes("/weboff") || !worker.includes("/stats") || !worker.includes("/setfree") || !worker.includes("/free")) throw new Error("Owner web/stat/free-limit commands missing");
 if (!html.includes("ownerStatsValues")) throw new Error("Owner statistics UI missing");
-console.log("Love Letter Official 3.4.4 build: PASS");
+if (!worker.includes("monthly_free_limit")) throw new Error("Dynamic monthly free limit setting missing");
+console.log("Love Letter Official 3.4.6 build: PASS");

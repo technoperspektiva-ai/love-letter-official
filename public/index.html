@@ -7279,6 +7279,36 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
 #llBrowserGate{position:fixed;inset:0;z-index:999999;background:linear-gradient(180deg,#fff8fb,#f9eef3);display:flex;align-items:center;justify-content:center;padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:auto;-webkit-overflow-scrolling:touch}
 #llBrowserGate[hidden]{display:none!important}.ll-browser-gate-card{width:min(440px,100%);background:#fff;border:1px solid rgba(86,35,58,.09);border-radius:28px;padding:clamp(22px,5vw,32px) clamp(18px,5vw,28px);box-shadow:0 24px 70px rgba(77,29,52,.12);text-align:center}.ll-browser-gate-icon{font-size:clamp(44px,12vw,58px);line-height:1;margin-bottom:14px}.ll-browser-gate-card h1{margin:0 0 10px;color:#3f1c2c;font-size:clamp(25px,7vw,34px);line-height:1.06}.ll-browser-gate-card p{margin:0 auto 20px;max-width:350px;color:#795b69;font-size:clamp(13px,3.7vw,15px);line-height:1.55}.ll-browser-gate-btn{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:16px;background:#442033;color:#fff;text-decoration:none;font-weight:800;font-size:15px;padding:0 20px}.ll-browser-gate-note{margin-top:12px!important;font-size:11px!important;color:#a48794!important}@media(min-width:760px){.ll-browser-gate-card{width:min(520px,100%);padding:38px 36px}.ll-browser-gate-btn{max-width:320px;margin:0 auto}}
 </style>
+
+<style id="recipient-share-signature-style">
+.recipient-love-signature{
+  width:min(430px,calc(100% - 28px));
+  margin:14px auto 4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  flex-wrap:wrap;
+  color:rgba(255,239,246,.72);
+  font:500 12px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
+  text-align:center;
+}
+.recipient-love-signature .sig-heart{
+  width:24px;height:24px;border-radius:999px;display:grid;place-items:center;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  color:#ffc5d8;font-size:12px;box-shadow:0 8px 22px rgba(0,0,0,.08);
+}
+.recipient-love-signature .sig-copy{opacity:.9}
+.recipient-love-signature a{
+  color:#ffd4e3;text-decoration:none;font-weight:700;
+  border-bottom:1px solid rgba(255,212,227,.32);
+  padding-bottom:1px;
+}
+.recipient-love-signature a:active{opacity:.7}
+@media(max-width:600px){
+  .recipient-love-signature{margin-top:12px;font-size:11.5px;padding:0 8px}
+}
+</style>
 </head>
 <body>
 <div class="app">
@@ -7619,7 +7649,7 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   };
   function host(){let el=document.getElementById("llTelegramCommerce");if(el)return el;el=document.createElement("div");el.id="llTelegramCommerce";document.body.appendChild(el);return el}
   function ensureModal(){if(document.getElementById("llTgModal"))return;const wrap=document.createElement("div");wrap.className="ll-tg-modal";wrap.id="llTgModal";wrap.innerHTML='<section class="ll-tg-card" role="dialog" aria-modal="true"><div id="llTgModalBody"></div></section>';wrap.addEventListener("click",e=>{if(e.target===wrap)closeAccount()});document.body.appendChild(wrap)}
-  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.4.4</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
+  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.4.5</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>'+Number(c.monthlyLimit||0)+' листів щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
   function wireModal(){document.getElementById("llCloseAccount")?.addEventListener("click",closeAccount);document.getElementById("llInviteFriend")?.addEventListener("click",inviteFriend);document.getElementById("llBuyLetter")?.addEventListener("click",buyLetter);document.getElementById("llPurchases")?.addEventListener("click",openPurchases);document.getElementById("llPaySupport")?.addEventListener("click",openPaySupport)}
   function openAccount(message=""){ensureModal();const modal=document.getElementById("llTgModal"),body=document.getElementById("llTgModalBody");body.innerHTML=accountMarkup(message);wireModal();modal.classList.add("open")}
   function closeAccount(){stopWebLoginPoll();document.getElementById("llTgModal")?.classList.remove("open")}
@@ -10685,6 +10715,11 @@ function mountStory(payload){
         <div class="phone-bar"><span>Love Letter</span><span>${escapeHtml(payload.recipient || "для тебе")}</span><span>♡</span></div>
         <div class="phone-stage" id="storyStage"></div>
       </div>
+      <div class="recipient-love-signature" aria-label="Love Letter">
+        <span class="sig-heart">♡</span>
+        <span class="sig-copy">Надіслано з любов’ю через <strong>Love Letter</strong></span>
+        <a href="https://t.me/loveletter_official_bot?start=share" target="_blank" rel="noopener">Створити свій лист</a>
+      </div>
     </div>
   `;
   state.storyStep = payload.useSecret ? 0 : 1;
@@ -11854,7 +11889,7 @@ window.addEventListener("load", ()=>{
     document.documentElement.style.overflow="hidden";
     document.body.style.overflow="hidden";
   };
-  fetch("/api/public/config",{cache:"no-store"}).then(r=>r.json()).then(d=>{if(!d.browserAccessEnabled&&!inTelegram())show(d.botStartUrl)}).catch(()=>show("https://t.me/loveletter_official_bot?start=start"));
+  fetch("/api/public/config",{cache:"no-store"}).then(r=>r.json()).then(async d=>{if(d.browserAccessEnabled||inTelegram())return;try{const a=await fetch("/api/account",{cache:"no-store",credentials:"include"});if(a.ok)return;}catch{}show(d.botStartUrl)}).catch(async()=>{try{const a=await fetch("/api/account",{cache:"no-store",credentials:"include"});if(a.ok)return;}catch{}show("https://t.me/loveletter_official_bot?start=start")});
 })();
 </script>
 </body>

@@ -1,4 +1,4 @@
-const VERSION = "3.4.4";
+const VERSION = "3.4.6";
 const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
@@ -350,15 +350,15 @@ async function ensureUser(env, tg, startParam = "") {
 }
 
 async function ensureMonth(env, userId) {
-  const c = cfg(env);
+  const freeLimit = await monthlyFreeLimit(env);
   const key = monthKey();
   const t = Date.now();
   await env.DB.prepare(
     "INSERT OR IGNORE INTO monthly_usage (telegram_id,month_key,used,free_limit,updated_at) VALUES (?,?,0,?,?)"
-  ).bind(userId, key, c.freeLimit, t).run();
+  ).bind(userId, key, freeLimit, t).run();
   await env.DB.prepare(
     "UPDATE monthly_usage SET free_limit=?,updated_at=? WHERE telegram_id=? AND month_key=?"
-  ).bind(c.freeLimit, t, userId, key).run();
+  ).bind(freeLimit, t, userId, key).run();
   return env.DB.prepare("SELECT * FROM monthly_usage WHERE telegram_id=? AND month_key=?").bind(userId, key).first();
 }
 
@@ -377,6 +377,13 @@ async function setSetting(env, key, value) {
 
 async function browserAccessEnabled(env) {
   return (await getSetting(env, "browser_access_enabled", "0")) === "1";
+}
+
+async function monthlyFreeLimit(env) {
+  const fallback = cfg(env).freeLimit;
+  const raw = await getSetting(env, "monthly_free_limit", String(fallback));
+  const value = Number(raw);
+  return Number.isFinite(value) ? Math.max(0, Math.min(1000, Math.floor(value))) : fallback;
 }
 
 async function markUserActivity(env, userId, source = "") {
@@ -419,6 +426,7 @@ async function publicConfig(env) {
   return json({
     ok: true,
     browserAccessEnabled: await browserAccessEnabled(env),
+    monthlyFreeLimit: await monthlyFreeLimit(env),
     botUsername: c.botUsername,
     botStartUrl: `https://t.me/${c.botUsername}?start=start`,
     version: VERSION
@@ -676,6 +684,8 @@ async function telegramSetup(env) {
         { command: "webon", description: "Увімкнути веб-доступ" },
         { command: "weboff", description: "Вимкнути веб-доступ" },
         { command: "stats", description: "Статистика користувачів" },
+        { command: "free", description: "Поточний безкоштовний ліміт" },
+        { command: "setfree", description: "Змінити безкоштовний ліміт" },
         { command: "support", description: "Підтримка" },
         { command: "paysupport", description: "Підтримка платежів" }
       ]
@@ -878,9 +888,8 @@ async function health(env) {
 
 async function authenticatedUser(request, env, options = {}) {
   const a = await authenticate(request, env);
-  if (a.source === "browser" && !options.allowBrowserWhenDisabled && !(await browserAccessEnabled(env))) {
-    throw Object.assign(new Error("Відкрий Love Letter через Telegram-бота."), { status: 403, code: "BROWSER_ACCESS_DISABLED" });
-  }
+  // A valid browser session remains usable even after /weboff.
+  // The toggle only blocks NEW browser sign-ins.
   const user = await ensureUser(env, a.user, a.startParam || "");
   return { a, user, userId: String(user.telegram_id) };
 }
@@ -1188,15 +1197,16 @@ async function webhook(request, env) {
     }
 
     if (command === "/start") {
+      const freeLimit = await monthlyFreeLimit(env);
       if (isOwner) {
         await sendBotText(env, message.chat.id,
-          "👑 Love Letter · Адмін\n\nТи авторизований як власник.\n\nКоманди:\n/gift @username 3 — видати листи\n/give @username 1 — те саме коротко\n/help — допомога та список команд\n/support — контакт підтримки\n\n3 безкоштовні листи на місяць для звичайних користувачів, далі — 25⭐ за лист.",
+          `👑 Love Letter · Адмін\n\nТи авторизований як власник.\n\nКоманди:\n/gift @username 3 — видати листи\n/give @username 1 — те саме коротко\n/free — поточний безкоштовний ліміт\n/setfree 5 — змінити безкоштовний ліміт\n/help — допомога та список команд\n/support — контакт підтримки\n\nЗараз: ${freeLimit} безкоштовних листів на місяць, далі — 25⭐ за лист.`,
           { reply_markup: adminKeyboard(env) }
         );
       } else {
         const name = String(message.from?.first_name || "").trim();
         await sendBotText(env, message.chat.id,
-          `💌 Привіт${name ? `, ${name}` : ""}!\n\nЛаскаво просимо до Love Letter — тут можна створити красивий особистий цифровий лист для важливої людини.\n\n✨ 3 листи щомісяця безкоштовно.\n⭐ Далі — 25 Telegram Stars за лист.\n🎁 За друга, який створить свій перший лист, ти отримаєш +1 безкоштовний лист.\n\nНатисни кнопку нижче, щоб розпочати 👇`,
+          `💌 Привіт${name ? `, ${name}` : ""}!\n\nЛаскаво просимо до Love Letter — тут можна створити красивий особистий цифровий лист для важливої людини.\n\n✨ ${freeLimit} листів щомісяця безкоштовно.\n⭐ Далі — 25 Telegram Stars за лист.\n🎁 За друга, який створить свій перший лист, ти отримаєш +1 безкоштовний лист.\n\nНатисни кнопку нижче, щоб розпочати 👇`,
           { reply_markup: miniAppKeyboard(env) }
         );
       }
@@ -1205,8 +1215,9 @@ async function webhook(request, env) {
       await deleteBotMessage(env, message.chat.id, message.message_id);
     } else if (command === "/help") {
       if (isOwner) {
+        const freeLimit = await monthlyFreeLimit(env);
         await sendBotText(env, message.chat.id,
-          "👑 Адмін-команди Love Letter\n\n/gift @username 3 — додати бонусні листи\n/give @username 1 — додати бонусні листи\n/support — підтримка\n/paysupport — підтримка платежів\n/start — адмін-меню\n\nПриклад: /gift @username 5",
+          `👑 Адмін-команди Love Letter\n\n/gift @username 3 — додати бонусні листи\n/give @username 1 — додати бонусні листи\n/free — показати поточний місячний ліміт\n/setfree 5 — встановити новий місячний ліміт\n/webon — дозволити нові web-входи\n/weboff — закрити нові web-входи\n/stats — статистика\n/support — підтримка\n/paysupport — підтримка платежів\n/start — адмін-меню\n\nПоточний ліміт: ${freeLimit}.\nПриклад: /setfree 5`,
           { reply_markup: adminKeyboard(env) }
         );
       } else {
@@ -1219,7 +1230,22 @@ async function webhook(request, env) {
       if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
       const enabled = command === "/webon";
       await setSetting(env, "browser_access_enabled", enabled ? "1" : "0");
-      await sendBotText(env, message.chat.id, enabled ? "✅ Веб-доступ увімкнено." : "🔒 Веб-доступ вимкнено.", { reply_markup: adminKeyboard(env) });
+      await sendBotText(env, message.chat.id, enabled ? "✅ Нові web-авторизації увімкнено." : "🔒 Нові web-авторизації вимкнено. Користувачі, які вже авторизувалися у web, залишаються в системі до виходу або завершення сесії.", { reply_markup: adminKeyboard(env) });
+    } else if (command === "/free") {
+      if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
+      const freeLimit = await monthlyFreeLimit(env);
+      await sendBotText(env, message.chat.id, `🎁 Безкоштовний місячний пакет: ${freeLimit} листів.\n\nЗмінити: /setfree 5`, { reply_markup: adminKeyboard(env) });
+    } else if (command === "/setfree") {
+      if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
+      const raw = String(parts[1] || "").trim();
+      const value = Number(raw);
+      if (!Number.isInteger(value) || value < 0 || value > 1000) {
+        await sendBotText(env, message.chat.id, "Вкажи ціле число від 0 до 1000.\n\nПриклад: /setfree 5", { reply_markup: adminKeyboard(env) });
+        return json({ok:true});
+      }
+      await setSetting(env, "monthly_free_limit", String(value));
+      await env.DB.prepare("UPDATE monthly_usage SET free_limit=?,updated_at=? WHERE month_key=?").bind(value, Date.now(), monthKey()).run().catch(()=>{});
+      await sendBotText(env, message.chat.id, `✅ Новий безкоштовний пакет: ${value} листів на місяць.\n\nЗміна вже застосована до поточного місяця.`, { reply_markup: adminKeyboard(env) });
     } else if (command === "/stats") {
       if (!isOwner) { await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику."); return json({ok:true}); }
       const now=Date.now(), since=now-5*60*1000;
