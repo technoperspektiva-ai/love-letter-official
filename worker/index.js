@@ -1,7 +1,7 @@
 import { AuthError, answerPreCheckout, createStarsInvoiceLink, telegramApi, verifyTelegramInitData } from "./telegram.js";
 import { clampText, errorJson, id, json, monthKey, nextMonthIso, nowMs, safeStoryPayload, token } from "./helpers.js";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 
 function config(env) {
   return {
