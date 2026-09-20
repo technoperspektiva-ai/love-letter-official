@@ -1,4 +1,4 @@
-const VERSION = "3.1.1";
+const VERSION = "3.2.0";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -514,6 +514,19 @@ async function createInvoice(request, env) {
   return json({ ok: true, paymentId: id, invoiceUrl, stars: c.letterPrice });
 }
 
+async function listPayments(request, env) {
+  await ensureSchema(env);
+  let auth;
+  try { auth = await authenticatedUser(request, env); }
+  catch (error) { return json({ error: error.code || "auth_error", message: error.message }, error.status || 401); }
+
+  const rows = await env.DB.prepare(
+    "SELECT id,status,stars,created_at,paid_at FROM payments WHERE telegram_id=? ORDER BY created_at DESC LIMIT 50"
+  ).bind(auth.userId).all();
+
+  return json({ ok: true, payments: rows.results || [] });
+}
+
 async function paymentStatus(request, env, id) {
   let auth;
   try { auth = await authenticatedUser(request, env); }
@@ -601,6 +614,7 @@ export default {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);
       if (url.pathname === "/api/payments/invoice" && request.method === "POST") return await createInvoice(request, env);
+      if (url.pathname === "/api/payments" && request.method === "GET") return await listPayments(request, env);
       if (url.pathname.startsWith("/api/payments/") && request.method === "GET") return await paymentStatus(request, env, url.pathname.split("/").pop());
       if (url.pathname === "/api/telegram/webhook" && request.method === "POST") return await webhook(request, env);
 
