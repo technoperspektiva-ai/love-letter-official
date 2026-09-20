@@ -1,4 +1,4 @@
-# Love Letter Official 3.2.0 — Payments UI
+# Love Letter Official 3.3.0 — Payments UI
 
 Added:
 - polished Telegram Stars purchase UI inside the existing balance sheet;

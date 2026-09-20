@@ -8,6 +8,8 @@ const scripts = [...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/g)]
 for (let i = 0; i < scripts.length; i++) new vm.Script(scripts[i], { filename: `index-inline-${i}.js` });
 if (!html.includes("telegram-commerce-bridge")) throw new Error("Telegram commerce bridge missing");
 if (!html.includes("/api/payments/invoice")) throw new Error("Stars purchase flow missing");
+if (!html.includes("/api/auth/telegram/callback")) throw new Error("Browser Telegram Login missing");
+if (!html.includes("cross-browser-viewport-v330")) throw new Error("Cross-browser viewport fix missing");
 console.log(`Inline scripts: ${scripts.length} PASS`);
 if (html.includes("toDataпосилання")) throw new Error("Broken toDataURL identifier detected");
 if (!html.includes("Купити +1 лист")) throw new Error("Visible Stars purchase CTA missing");
@@ -15,4 +17,7 @@ if (!html.includes("Запросити друга · отримати +1")) thro
 if (!html.includes("Мої покупки")) throw new Error("Visible purchases CTA missing");
 if (!html.includes("/api/payments")) throw new Error("Payments history API usage missing");
 if (!html.includes("Підтримка оплати")) throw new Error("Payment support CTA missing");
-console.log("Love Letter Official 3.2.0 build: PASS");
+const worker = fs.readFileSync("worker/index.js", "utf8");
+if (!worker.includes("senderUsername !== \"hodynnyk\"")) throw new Error("Owner gift guard missing");
+if (!worker.includes("/gift")) throw new Error("Owner gift command missing");
+console.log("Love Letter Official 3.3.2 build: PASS");

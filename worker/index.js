@@ -1,4 +1,4 @@
-const VERSION = "3.2.0";
+const VERSION = "3.3.2";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -51,7 +51,7 @@ function cfg(env) {
     appOrigin: String(env.APP_ORIGIN || "").replace(/\/$/, ""),
     botUsername: String(env.BOT_USERNAME || "loveletter_official_bot").replace(/^@/, ""),
     freeLimit: Math.max(0, Number(env.MONTHLY_FREE_LIMIT || 3)),
-    letterPrice: Math.max(1, Number(env.LETTER_PRICE_XTR || 29)),
+    letterPrice: Math.max(1, Number(env.LETTER_PRICE_XTR || 25)),
     authMaxAge: Math.max(60, Number(env.AUTH_MAX_AGE_SECONDS || 86400)),
     support: String(env.SUPPORT_CONTACT || "@loveletter_official_bot")
   };
@@ -71,6 +71,96 @@ async function hmac(key, data) {
 
 function hex(bytes) {
   return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+
+function b64urlEncodeBytes(bytes) {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+}
+
+function b64urlEncodeText(text) {
+  return b64urlEncodeBytes(enc.encode(text));
+}
+
+function b64urlDecodeText(value) {
+  let base64 = String(value || "").replaceAll("-", "+").replaceAll("_", "/");
+  while (base64.length % 4) base64 += "=";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function parseCookies(request) {
+  const raw = request.headers.get("cookie") || "";
+  const out = {};
+  for (const part of raw.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx < 1) continue;
+    out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+  }
+  return out;
+}
+
+async function createBrowserSession(user, botToken) {
+  const payload = b64urlEncodeText(JSON.stringify({
+    user: {
+      id: String(user.id),
+      username: user.username || "",
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      photo_url: user.photo_url || "",
+      language_code: user.language_code || ""
+    },
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30
+  }));
+  const signature = b64urlEncodeBytes(await hmac(botToken, `browser-session:${payload}`));
+  return `${payload}.${signature}`;
+}
+
+async function verifyBrowserSession(token, botToken) {
+  if (!token || !botToken) return null;
+  const dot = token.lastIndexOf(".");
+  if (dot < 1) return null;
+  const payload = token.slice(0, dot);
+  const given = token.slice(dot + 1);
+  const expected = b64urlEncodeBytes(await hmac(botToken, `browser-session:${payload}`));
+  if (given !== expected) return null;
+  try {
+    const data = JSON.parse(b64urlDecodeText(payload));
+    if (!data?.user?.id || Number(data.exp || 0) < Math.floor(Date.now() / 1000)) return null;
+    return { user: data.user, startParam: "" };
+  } catch {
+    return null;
+  }
+}
+
+async function verifyTelegramLoginPayload(params, botToken, maxAge) {
+  if (!botToken) throw Object.assign(new Error("Telegram Bot Token ще не підключений."), { status: 503, code: "BOT_SECRET_MISSING" });
+  const given = params.get("hash") || "";
+  if (!given) throw Object.assign(new Error("Telegram Login не містить hash."), { status: 401, code: "NO_HASH" });
+  const entries = [...params.entries()]
+    .filter(([k]) => k !== "hash" && k !== "ref")
+    .sort(([a], [b]) => a.localeCompare(b));
+  const dataCheck = entries.map(([k, v]) => `${k}=${v}`).join("\n");
+  const secret = await crypto.subtle.digest("SHA-256", enc.encode(botToken));
+  const expected = hex(await hmac(new Uint8Array(secret), dataCheck));
+  if (expected !== given) throw Object.assign(new Error("Telegram Login не пройшов перевірку."), { status: 401, code: "BAD_HASH" });
+  const authDate = Number(params.get("auth_date") || 0);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!authDate || nowSec - authDate > maxAge) throw Object.assign(new Error("Telegram Login застарів. Увійди ще раз."), { status: 401, code: "AUTH_EXPIRED" });
+  const id = params.get("id");
+  if (!id) throw Object.assign(new Error("Telegram Login не повернув user id."), { status: 401, code: "NO_USER" });
+  return {
+    id,
+    first_name: params.get("first_name") || "",
+    last_name: params.get("last_name") || "",
+    username: params.get("username") || "",
+    photo_url: params.get("photo_url") || "",
+    language_code: params.get("language_code") || ""
+  };
 }
 
 async function verifyInitData(raw, botToken, maxAge) {
@@ -113,7 +203,13 @@ async function authenticate(request, env) {
   const auth = request.headers.get("authorization") || "";
   const direct = request.headers.get("x-telegram-init-data") || "";
   const raw = auth.startsWith("tma ") ? auth.slice(4) : direct;
-  return verifyInitData(raw, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge);
+  if (raw) return verifyInitData(raw, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge);
+
+  const cookieSession = parseCookies(request).ll_tg_session || "";
+  const session = await verifyBrowserSession(cookieSession, env.TELEGRAM_BOT_TOKEN);
+  if (session) return session;
+
+  throw Object.assign(new Error("Увійди через Telegram, щоб створювати листи."), { status: 401, code: "AUTH_REQUIRED" });
 }
 
 async function ensureSchema(env) {
@@ -321,6 +417,43 @@ function validatePayload(payload) {
   const raw = JSON.stringify(payload);
   if (raw.length > 400000) return "payload_too_large";
   return "";
+}
+
+
+async function telegramLoginCallback(request, env) {
+  try {
+    const url = new URL(request.url);
+    const tg = await verifyTelegramLoginPayload(url.searchParams, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge);
+    await ensureSchema(env);
+    await ensureUser(env, tg, "");
+    const token = await createBrowserSession(tg, env.TELEGRAM_BOT_TOKEN);
+    const dest = new URL("/", cfg(env).appOrigin || url.origin);
+    dest.searchParams.set("telegram_login", "ok");
+    const headers = new Headers({
+      location: dest.toString(),
+      "cache-control": "no-store",
+      "set-cookie": `ll_tg_session=${token}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`
+    });
+    return new Response(null, { status: 302, headers });
+  } catch (error) {
+    const url = new URL(request.url);
+    const dest = new URL("/", cfg(env).appOrigin || url.origin);
+    dest.searchParams.set("telegram_login", "error");
+    dest.searchParams.set("reason", error.code || "auth_error");
+    return Response.redirect(dest.toString(), 302);
+  }
+}
+
+async function logoutBrowser() {
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "set-cookie": "ll_tg_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      ...cors
+    }
+  });
 }
 
 async function health(env) {
@@ -545,6 +678,7 @@ async function accountApi(request, env) {
 }
 
 async function webhook(request, env) {
+  await ensureSchema(env);
   const secret = env.TELEGRAM_WEBHOOK_SECRET;
   if (secret && request.headers.get("x-telegram-bot-api-secret-token") !== secret) return json({ error: "forbidden" }, 403);
 
@@ -579,11 +713,54 @@ async function webhook(request, env) {
   }
 
   if (message?.text && message?.chat?.id) {
-    const command = message.text.split(/\s+/)[0].toLowerCase();
+    const parts = message.text.trim().split(/\s+/);
+    const command = parts[0].toLowerCase().split("@")[0];
+    const senderUsername = String(message.from?.username || "").replace(/^@/, "").toLowerCase();
+
     if (command === "/start") {
       await sendBotText(env, message.chat.id, "💌 Love Letter\n\nСтвори особистий цифровий лист. Перші 3 листи щомісяця — безкоштовно.");
     } else if (command === "/support" || command === "/paysupport") {
       await sendBotText(env, message.chat.id, `Підтримка Love Letter: ${cfg(env).support}`);
+    } else if (command === "/gift" || command === "/give") {
+      if (senderUsername !== "hodynnyk") {
+        await sendBotText(env, message.chat.id, "⛔ Ця команда доступна лише власнику.");
+        return json({ ok: true });
+      }
+
+      const targetUsername = String(parts[1] || "").replace(/^@/, "").trim();
+      const amount = Number.parseInt(parts[2] || "1", 10);
+      if (!targetUsername || !Number.isInteger(amount) || amount < 1 || amount > 1000) {
+        await sendBotText(env, message.chat.id, "Формат: /gift @username 3\nКількість: від 1 до 1000 листів.");
+        return json({ ok: true });
+      }
+
+      const target = await env.DB.prepare(
+        "SELECT telegram_id,username,bonus_credits FROM telegram_users WHERE LOWER(username)=LOWER(?) LIMIT 1"
+      ).bind(targetUsername).first();
+
+      if (!target) {
+        await sendBotText(env, message.chat.id, `Не знайшов @${targetUsername}. Користувач має хоча б один раз увійти в Love Letter через Telegram.`);
+        return json({ ok: true });
+      }
+
+      const t = Date.now();
+      await env.DB.prepare(
+        "UPDATE telegram_users SET bonus_credits=bonus_credits+?,updated_at=? WHERE telegram_id=?"
+      ).bind(amount, t, String(target.telegram_id)).run();
+      const updated = await env.DB.prepare(
+        "SELECT bonus_credits FROM telegram_users WHERE telegram_id=?"
+      ).bind(String(target.telegram_id)).first();
+
+      await sendBotText(
+        env,
+        message.chat.id,
+        `✅ @${target.username || targetUsername}: +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.\nБонусний баланс: ${Number(updated?.bonus_credits || 0)}.`
+      );
+      sendBotText(
+        env,
+        target.telegram_id,
+        `🎁 Власник Love Letter подарував тобі +${amount} безкоштовних лист${amount === 1 ? "" : "ів"}.`
+      ).catch(() => {});
     }
   }
 
@@ -612,6 +789,8 @@ export default {
 
     try {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
+      if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
+      if (url.pathname === "/api/auth/logout" && request.method === "POST") return await logoutBrowser();
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);
       if (url.pathname === "/api/payments/invoice" && request.method === "POST") return await createInvoice(request, env);
       if (url.pathname === "/api/payments" && request.method === "GET") return await listPayments(request, env);
