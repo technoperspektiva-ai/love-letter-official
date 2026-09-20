@@ -7062,6 +7062,102 @@ body.story-open #storyView img{
 @media(min-width:700px){.ll-tg-modal{align-items:center}.ll-tg-card{padding:26px}.ll-tg-floating{top:18px}}
 </style>
 
+
+<style id="telegram-scroll-fix-v311">
+@media (max-width:900px){
+  html.tg-miniapp,
+  html.tg-miniapp body{
+    width:100%;
+    height:100dvh !important;
+    min-height:100dvh !important;
+    max-height:100dvh !important;
+    overflow:hidden !important;
+    overscroll-behavior:none !important;
+    -webkit-overflow-scrolling:auto !important;
+  }
+
+  body.tg-miniapp .app,
+  body.tg-miniapp #creatorView{
+    height:100dvh !important;
+    min-height:0 !important;
+    max-height:100dvh !important;
+    overflow:hidden !important;
+  }
+
+  body.tg-miniapp #mobileApp.mobile-app:not(.hidden){
+    height:100dvh !important;
+    min-height:0 !important;
+    max-height:100dvh !important;
+    overflow:hidden !important;
+    display:flex !important;
+  }
+
+  body.tg-miniapp #mobileApp .ma-screen{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    height:auto !important;
+    max-height:none !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior-y:contain !important;
+    -webkit-overflow-scrolling:touch !important;
+    touch-action:pan-y !important;
+    scroll-behavior:auto !important;
+  }
+
+  body.tg-miniapp.mw-create-active #mobileWizard{
+    height:100dvh !important;
+    min-height:0 !important;
+    max-height:100dvh !important;
+    overflow:hidden !important;
+    display:flex !important;
+  }
+
+  body.tg-miniapp.mw-create-active #mobileWizard .mw-main{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    height:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior-y:contain !important;
+    -webkit-overflow-scrolling:touch !important;
+    touch-action:pan-y !important;
+    scroll-behavior:auto !important;
+    padding-bottom:calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.tg-miniapp .mw-preview-canvas,
+  body.tg-miniapp .preview.mobile-open{
+    overflow-y:auto !important;
+    overscroll-behavior-y:contain !important;
+    -webkit-overflow-scrolling:touch !important;
+    touch-action:pan-y !important;
+  }
+
+  body.tg-miniapp.story-open,
+  body.tg-miniapp.story-open .app{
+    height:auto !important;
+    min-height:100dvh !important;
+    max-height:none !important;
+    overflow-y:auto !important;
+    overscroll-behavior-y:auto !important;
+    touch-action:pan-y !important;
+  }
+}
+
+.ll-tg-card{
+  max-height:min(82dvh,720px);
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+
+.ll-tg-modal.open{
+  touch-action:pan-y;
+}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -7365,10 +7461,36 @@ body.story-open #storyView img{
   const isCreator=()=>location.pathname==="/";
   const initData=()=>tg?.initData||"";
   const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  try{tg?.ready();tg?.expand();tg?.setHeaderColor?.("#24101f");tg?.setBackgroundColor?.("#24101f");tg?.setBottomBarColor?.("#24101f")}catch{}
+  try{
+    tg?.ready();
+    tg?.expand();
+    tg?.disableVerticalSwipes?.();
+    tg?.setHeaderColor?.("#24101f");
+    tg?.setBackgroundColor?.("#24101f");
+    tg?.setBottomBarColor?.("#24101f");
+  }catch{}
+  if(tg?.initData){
+    document.documentElement.classList.add("tg-miniapp");
+    document.body.classList.add("tg-miniapp");
+  }
   if(tg?.initData && "serviceWorker" in navigator){
-    navigator.serviceWorker.getRegistrations?.().then(list=>Promise.all(list.map(r=>r.unregister()))).catch(()=>{});
-    if("caches" in window)caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith("love-letter-")).map(k=>caches.delete(k)))).catch(()=>{});
+    (async()=>{
+      try{
+        const hadController=!!navigator.serviceWorker.controller;
+        const regs=await navigator.serviceWorker.getRegistrations?.()||[];
+        await Promise.all(regs.map(r=>r.unregister()));
+        if("caches" in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }
+        if(hadController && sessionStorage.getItem("ll-tg-cache-reset-311")!=="1"){
+          sessionStorage.setItem("ll-tg-cache-reset-311","1");
+          const u=new URL(location.href);
+          u.searchParams.set("_llb","311");
+          location.replace(u.toString());
+        }
+      }catch{}
+    })();
   }
   window.fetch=async(input,init={})=>{
     const url=new URL(typeof input==="string"?input:input.url,location.href);
@@ -7386,7 +7508,7 @@ body.story-open #storyView img{
   };
   function host(){let el=document.getElementById("llTelegramCommerce");if(el)return el;el=document.createElement("div");el.id="llTelegramCommerce";document.body.appendChild(el);return el}
   function ensureModal(){if(document.getElementById("llTgModal"))return;const wrap=document.createElement("div");wrap.className="ll-tg-modal";wrap.id="llTgModal";wrap.innerHTML='<section class="ll-tg-card" role="dialog" aria-modal="true"><div id="llTgModalBody"></div></section>';wrap.addEventListener("click",e=>{if(e.target===wrap)closeAccount()});document.body.appendChild(wrap)}
-  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||29,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);return '<div class="ll-tg-kicker">Love Letter Official</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Коли вони закінчаться, можна використати бонус за друга або купити ще один лист через Telegram Stars.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
+  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||29,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);return '<div class="ll-tg-kicker">Love Letter Official · v3.1.1</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Коли вони закінчаться, можна використати бонус за друга або купити ще один лист через Telegram Stars.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
   function wireModal(){document.getElementById("llCloseAccount")?.addEventListener("click",closeAccount);document.getElementById("llInviteFriend")?.addEventListener("click",inviteFriend);document.getElementById("llBuyLetter")?.addEventListener("click",buyLetter)}
   function openAccount(message=""){ensureModal();const modal=document.getElementById("llTgModal"),body=document.getElementById("llTgModalBody");body.innerHTML=accountMarkup(message);wireModal();modal.classList.add("open")}
   function closeAccount(){document.getElementById("llTgModal")?.classList.remove("open")}
