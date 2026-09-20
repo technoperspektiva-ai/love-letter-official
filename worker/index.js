@@ -417,6 +417,46 @@ async function browserTelegramAuthStatus(request, env) {
   });
 }
 
+
+async function consumeBrowserTelegramAuth(request, env) {
+  if (!(await browserAccessEnabled(env))) {
+    return Response.redirect(`${cfg(env).appOrigin}/?web=disabled`, 302);
+  }
+  await ensureSchema(env);
+  const url = new URL(request.url);
+  const token = String(url.searchParams.get("token") || "").trim();
+  if (!token) return Response.redirect(`${cfg(env).appOrigin}/?web=invalid`, 302);
+
+  const row = await env.DB.prepare("SELECT * FROM web_auth_sessions WHERE token=?").bind(token).first();
+  const now = Date.now();
+  if (!row || Number(row.expires_at || 0) < now || row.consumed_at || row.status !== "authorized" || !row.telegram_id) {
+    return Response.redirect(`${cfg(env).appOrigin}/?web=expired`, 302);
+  }
+
+  const user = await env.DB.prepare("SELECT * FROM telegram_users WHERE telegram_id=?").bind(String(row.telegram_id)).first();
+  if (!user) return Response.redirect(`${cfg(env).appOrigin}/?web=user_missing`, 302);
+
+  const session = await createBrowserSession({
+    id: String(user.telegram_id),
+    username: user.username || "",
+    first_name: user.first_name || "",
+    last_name: user.last_name || "",
+    photo_url: user.photo_url || "",
+    language_code: user.language_code || ""
+  }, env.TELEGRAM_BOT_TOKEN);
+
+  await env.DB.prepare("UPDATE web_auth_sessions SET consumed_at=? WHERE token=? AND consumed_at IS NULL").bind(now, token).run();
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "location": `${cfg(env).appOrigin}/?web_login=ok`,
+      "set-cookie": `ll_tg_session=${session}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`,
+      "cache-control": "no-store"
+    }
+  });
+}
+
 async function accountSnapshot(env, userId) {
   const c = cfg(env);
   const user = await env.DB.prepare("SELECT * FROM telegram_users WHERE telegram_id=?").bind(userId).first();
@@ -555,6 +595,7 @@ async function telegramSetup(env) {
       commands: [
         { command: "start", description: "Відкрити Love Letter" },
         { command: "help", description: "Допомога" },
+        { command: "web", description: "Відкрити веб-версію" },
         { command: "support", description: "Підтримка" }
       ]
     });
@@ -565,6 +606,7 @@ async function telegramSetup(env) {
         { command: "help", description: "Адмін-команди" },
         { command: "gift", description: "Видати листи за @username" },
         { command: "give", description: "Видати листи за @username" },
+        { command: "web", description: "Відкрити веб-версію" },
         { command: "support", description: "Підтримка" },
         { command: "paysupport", description: "Підтримка платежів" }
       ]
@@ -1013,6 +1055,27 @@ async function webhook(request, env) {
           { reply_markup: miniAppKeyboard(env) }
         );
       }
+    } else if (command === "/web") {
+      if (!(await browserAccessEnabled(env))) {
+        await sendBotText(env, message.chat.id,
+          "🌐 Веб-версія Love Letter зараз вимкнена власником.",
+          { reply_markup: miniAppKeyboard(env) }
+        );
+      } else {
+        await ensureSchema(env);
+        const webToken = randomToken(30);
+        const now = Date.now();
+        const expiresAt = now + 10 * 60 * 1000;
+        await env.DB.prepare("DELETE FROM web_auth_sessions WHERE expires_at<? OR consumed_at IS NOT NULL").bind(now - 60000).run().catch(() => {});
+        await env.DB.prepare(
+          "INSERT INTO web_auth_sessions (token,status,telegram_id,created_at,expires_at,authorized_at) VALUES (?,'authorized',?,?,?,?)"
+        ).bind(webToken, String(message.from.id), now, expiresAt, now).run();
+        const webUrl = `${cfg(env).appOrigin}/api/auth/telegram/link/consume?token=${encodeURIComponent(webToken)}`;
+        await sendBotText(env, message.chat.id,
+          "🌐 Веб-версія Love Letter\n\nНатисни кнопку нижче — сайт відкриється вже з твоєю Telegram-авторизацією. Посилання дійсне 10 хвилин.",
+          { reply_markup: { inline_keyboard: [[{ text: "🌐 Відкрити веб-версію", url: webUrl }]] } }
+        );
+      }
     } else if (command === "/support" || command === "/paysupport") {
       await sendBotText(env, message.chat.id, `Підтримка Love Letter: ${cfg(env).support}`, { reply_markup: miniAppKeyboard(env) });
     } else if (command === "/gift" || command === "/give") {
@@ -1096,6 +1159,7 @@ export default {
       if (url.pathname === "/api/telegram/setup" && request.method === "GET") return await telegramSetup(env);
       if (url.pathname === "/api/auth/telegram/link/start" && request.method === "POST") return await startBrowserTelegramAuth(env);
       if (url.pathname === "/api/auth/telegram/link/status" && request.method === "GET") return await browserTelegramAuthStatus(request, env);
+      if (url.pathname === "/api/auth/telegram/link/consume" && request.method === "GET") return await consumeBrowserTelegramAuth(request, env);
       if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
       if (url.pathname === "/api/auth/logout" && request.method === "POST") return await logoutBrowser();
       if (url.pathname === "/api/account" && request.method === "GET") return await accountApi(request, env);

@@ -1,6 +1,6 @@
-# Love Letter Official 3.4.0
+# Love Letter Official 3.4.1
 
-Telegram-only creator mode + owner-controlled browser access. See `BROWSER-ACCESS-3.4.0.md`.
+Adaptive web mode + Telegram Mini App + `/web` bot command. See `WEB-COMMAND-3.4.1.md`.
 
 # Love Letter Official 3.3.0 — Telegram Login + Commerce + Browser Compatibility
 
