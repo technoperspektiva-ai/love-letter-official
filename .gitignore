@@ -1,6 +1,0 @@
-node_modules/
-.wrangler/
-.dev.vars
-playwright-report/
-test-results/
-.DS_Store
