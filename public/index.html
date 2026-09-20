@@ -3597,9 +3597,45 @@ input:focus,textarea:focus,select:focus{border-color:#cc6d91;box-shadow:0 0 0 4p
   color:#9a8790;
   font:500 11px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
 }
+.home-letter-status{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  width:100%;
+}
+.home-letter-status-card{
+  min-width:0;
+  padding:8px 9px;
+  border:1px solid rgba(74,34,52,.08);
+  border-radius:12px;
+  background:rgba(255,255,255,.62);
+  text-align:left;
+  box-shadow:0 5px 18px rgba(74,34,52,.045);
+}
+.home-letter-status-card span{
+  display:block;
+  margin-bottom:2px;
+  color:#a08c95;
+  font:600 9px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.home-letter-status-card b{
+  display:block;
+  overflow:hidden;
+  color:#4a2234;
+  font:750 13px/1.25 system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",sans-serif;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.home-letter-status.is-login{grid-template-columns:1fr}
+.home-letter-status.is-login .home-letter-status-card{cursor:pointer;text-align:center}
 @media (max-width:900px){
   .home-create-wrap{max-width:none;width:100%;}
   .home-create-note{margin-top:7px;font-size:10.5px;}
+  .home-letter-status{max-width:360px;margin:9px auto 0;}
+  .home-letter-status-card{padding:8px 10px;}
 }
 .home-create-plus{
   width:32px;height:32px;border-radius:50%;
@@ -7552,7 +7588,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   };
   function host(){let el=document.getElementById("llTelegramCommerce");if(el)return el;el=document.createElement("div");el.id="llTelegramCommerce";document.body.appendChild(el);return el}
   function ensureModal(){if(document.getElementById("llTgModal"))return;const wrap=document.createElement("div");wrap.className="ll-tg-modal";wrap.id="llTgModal";wrap.innerHTML='<section class="ll-tg-card" role="dialog" aria-modal="true"><div id="llTgModalBody"></div></section>';wrap.addEventListener("click",e=>{if(e.target===wrap)closeAccount()});document.body.appendChild(wrap)}
-  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.3.0</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
+  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.3.6</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
   function wireModal(){document.getElementById("llCloseAccount")?.addEventListener("click",closeAccount);document.getElementById("llInviteFriend")?.addEventListener("click",inviteFriend);document.getElementById("llBuyLetter")?.addEventListener("click",buyLetter);document.getElementById("llPurchases")?.addEventListener("click",openPurchases);document.getElementById("llPaySupport")?.addEventListener("click",openPaySupport)}
   function openAccount(message=""){ensureModal();const modal=document.getElementById("llTgModal"),body=document.getElementById("llTgModalBody");body.innerHTML=accountMarkup(message);wireModal();modal.classList.add("open")}
   function closeAccount(){document.getElementById("llTgModal")?.classList.remove("open")}
@@ -7566,11 +7602,15 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   function paymentsMarkup(items){const list=Array.isArray(items)?items:[];return '<div class="ll-payments-head"><div><div class="ll-tg-kicker">Telegram Stars</div><h2>Мої покупки</h2></div><button class="ll-payments-back" id="llPaymentsBack">Назад</button></div>'+(list.length?'<div class="ll-payments-list">'+list.map(p=>{const s=paymentStatusLabel(p.status);return '<div class="ll-payment-item"><div><strong>+1 Love Letter</strong><small>'+esc(formatPaymentDate(p.paid_at||p.created_at))+'</small><span class="ll-payment-status '+s[1]+'">'+esc(s[0])+'</span></div><div class="ll-payment-amount">'+Number(p.stars||0)+' ⭐</div></div>'}).join('')+'</div>':'<div class="ll-payments-empty">Покупок ще немає.<br>Перші 3 листи щомісяця безкоштовні ♡</div>')+'<div class="ll-support-note">Оплата проходить через Telegram Stars. Після підтвердження Telegram +1 лист автоматично додається на баланс.</div>'}
   async function openPurchases(){ensureModal();const modal=document.getElementById("llTgModal"),body=document.getElementById("llTgModalBody");modal.classList.add("open");body.innerHTML='<div class="ll-tg-kicker">Telegram Stars</div><h2>Завантажуємо покупки…</h2>';try{const r=await fetch("/api/payments",{cache:"no-store"});const d=await r.json();if(r.status===401){openLogin();return}if(!r.ok)throw new Error(d.message||d.error||"Не вдалося завантажити покупки");body.innerHTML=paymentsMarkup(d.payments||[]);document.getElementById("llPaymentsBack")?.addEventListener("click",()=>openAccount())}catch(e){body.innerHTML='<div class="ll-payments-head"><div><div class="ll-tg-kicker">Telegram Stars</div><h2>Мої покупки</h2></div><button class="ll-payments-back" id="llPaymentsBack">Назад</button></div><div class="ll-tg-error show">'+esc(e.message||"Помилка")+'</div>';document.getElementById("llPaymentsBack")?.addEventListener("click",()=>openAccount())}}
   function openPaySupport(){const bot=state.account?.botUsername||"loveletter_official_bot";const url='https://t.me/'+encodeURIComponent(bot)+'?text='+encodeURIComponent('/paysupport');try{tg?.openTelegramLink?.(url)||window.open(url,"_blank","noopener")}catch{location.href=url}}
-  async function refreshAccount(){if(!isCreator()||state.loading)return;state.loading=true;try{const r=await fetch("/api/account",{cache:"no-store"});const d=await r.json().catch(()=>({}));state.authKnown=true;if(r.status===401){state.account=null;renderLoginButton();return}if(!r.ok)throw new Error(d.message||d.error||"Не вдалося завантажити баланс");state.account=d;removeLoginButton();renderBalance()}catch(e){console.warn("Love Letter account",e);renderLoginButton()}finally{state.loading=false}}
-  function renderBalance(){if(!isCreator()||!state.account)return;removeLoginButton();const c=state.account.credits||{};let btn=document.getElementById("llTgBalance");if(!btn){btn=document.createElement("button");btn.type="button";btn.id="llTgBalance";btn.className="ll-tg-balance";btn.addEventListener("click",()=>openAccount());const top=document.querySelector(".top-actions")||document.querySelector(".ma-topbar");if(top)top.prepend(btn);else{btn.classList.add("ll-tg-floating");host().appendChild(btn)}}btn.innerHTML='<span>Листи</span><b>'+Number(c.totalAvailable||0)+'</b><span class="ll-star">✦</span>'}
+  async function refreshAccount(){if(!isCreator()||state.loading)return;state.loading=true;try{const r=await fetch("/api/account",{cache:"no-store"});const d=await r.json().catch(()=>({}));state.authKnown=true;if(r.status===401){state.account=null;renderLoginButton();renderHomeLetterStatus();return}if(!r.ok)throw new Error(d.message||d.error||"Не вдалося завантажити баланс");state.account=d;removeLoginButton();renderBalance()}catch(e){console.warn("Love Letter account",e);renderLoginButton()}finally{state.loading=false}}
+  function formatResetCountdown(value){const target=new Date(value||0).getTime();if(!Number.isFinite(target)||target<=0)return "—";const left=Math.max(0,target-Date.now());if(left<=0)return "зараз";const mins=Math.ceil(left/60000),days=Math.floor(mins/1440),hours=Math.floor((mins%1440)/60),minutes=mins%60;if(days>0)return days+" д "+hours+" год";if(hours>0)return hours+" год "+minutes+" хв";return minutes+" хв"}
+  function renderHomeLetterStatus(){const box=document.getElementById("homeLetterStatus");if(!box)return;if(!state.account){box.className="home-letter-status is-login";box.innerHTML='<button type="button" class="home-letter-status-card" id="homeLetterStatusLogin"><span>Баланс листів</span><b>Увійти через Telegram</b></button>';document.getElementById("homeLetterStatusLogin")?.addEventListener("click",()=>openLogin());return}const c=state.account.credits||{},total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0);box.className="home-letter-status";box.innerHTML='<button type="button" class="home-letter-status-card" id="homeLetterBalanceOpen"><span>Залишилось листів</span><b>'+total+' · безкоштовних '+monthly+'</b></button><div class="home-letter-status-card"><span>Оновлення через</span><b id="homeLetterResetTimer">'+esc(formatResetCountdown(c.resetsAt))+'</b></div>';document.getElementById("homeLetterBalanceOpen")?.addEventListener("click",()=>openAccount())}
+  function tickHomeReset(){const el=document.getElementById("homeLetterResetTimer"),value=state.account?.credits?.resetsAt;if(el&&value)el.textContent=formatResetCountdown(value)}
+  setInterval(tickHomeReset,30000);
+  function renderBalance(){if(!isCreator()||!state.account)return;removeLoginButton();const c=state.account.credits||{};let btn=document.getElementById("llTgBalance");if(!btn){btn=document.createElement("button");btn.type="button";btn.id="llTgBalance";btn.className="ll-tg-balance";btn.addEventListener("click",()=>openAccount());const top=document.querySelector(".top-actions")||document.querySelector(".ma-topbar");if(top)top.prepend(btn);else{btn.classList.add("ll-tg-floating");host().appendChild(btn)}}btn.innerHTML='<span>Листи</span><b>'+Number(c.totalAvailable||0)+'</b><span class="ll-star">✦</span>';renderHomeLetterStatus()}
   function inviteFriend(){const url=state.account?.referrals?.link;if(!url)return;const share='https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent('Створи свій Love Letter 💌 — 3 листи щомісяця безкоштовно. Після твого першого листа я отримаю +1.');try{tg?.openTelegramLink?.(share)||window.open(share,"_blank","noopener")}catch{location.href=share}}
   async function buyLetter(){const btn=document.getElementById("llBuyLetter");if(btn){btn.disabled=true;btn.textContent="Готуємо оплату…"}try{const r=await fetch("/api/payments/invoice",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});const d=await r.json().catch(()=>({}));if(r.status===401){openLogin();return}if(!r.ok)throw new Error(d.message||d.error||"Не вдалося створити оплату");if(tg?.openInvoice){tg.openInvoice(d.invoiceUrl,async status=>{if(status==="paid"){for(let i=0;i<12;i++){await new Promise(res=>setTimeout(res,900));const pr=await fetch('/api/payments/'+encodeURIComponent(d.paymentId),{cache:'no-store'});const pd=await pr.json().catch(()=>({}));if(pd?.payment?.status==='paid'){await refreshAccount();openAccount("+1 лист уже на балансі ✦");return}}}await refreshAccount();openAccount(status==="cancelled"?"Оплату скасовано.":"")})}else location.href=d.invoiceUrl}catch(e){openAccount(e.message||"Помилка оплати")}}
-  window.LoveLetterTelegram={refreshAccount,openAccount,openLogin,buyLetter,inviteFriend,openPurchases,openPaySupport,get account(){return state.account}};
+  window.LoveLetterTelegram={refreshAccount,openAccount,openLogin,buyLetter,inviteFriend,openPurchases,openPaySupport,renderHomeLetterStatus,get account(){return state.account}};
   const cleanLoginQuery=()=>{const u=new URL(location.href);if(u.searchParams.has("telegram_login")||u.searchParams.has("reason")){const ok=u.searchParams.get("telegram_login")==="ok";u.searchParams.delete("telegram_login");u.searchParams.delete("reason");history.replaceState(null,"",u.pathname+u.search+u.hash);if(ok)setTimeout(()=>openAccount("Telegram успішно підключено ✓"),450)}};
   window.addEventListener("DOMContentLoaded",()=>{ensureModal();cleanLoginQuery();setTimeout(refreshAccount,120)});
   window.addEventListener("load",()=>setTimeout(refreshAccount,600));
@@ -8171,6 +8211,7 @@ function renderAppHome(){
             <span>Створити лист</span>
           </button>
           <div class="home-create-note">3 безкоштовні повідомлення на місяць, далі — за Telegram Stars ⭐</div>
+          <div class="home-letter-status" id="homeLetterStatus" aria-live="polite"></div>
         </div>
       </div>
 
@@ -8264,6 +8305,7 @@ function renderAppHome(){
       </div>
     </section>`;
 
+  window.LoveLetterTelegram?.renderHomeLetterStatus?.();
   document.getElementById("maStartBtn")?.addEventListener("click",()=>openMobileCreate({resume:false}));
   document.getElementById("maResumeDraftBtn")?.addEventListener("click",()=>openMobileCreate({resume:true}));
   document.getElementById("maSeeAllBtn")?.addEventListener("click",()=>setMobileAppRoute("library"));

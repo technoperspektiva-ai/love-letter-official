@@ -1,4 +1,4 @@
-const VERSION = "3.3.4";
+const VERSION = "3.3.7";
 const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
@@ -349,7 +349,7 @@ async function accountSnapshot(env, userId) {
     referrals: {
       qualified: Number(q?.n || 0),
       pending: Number(p?.n || 0),
-      link: `https://t.me/${c.botUsername}?startapp=ref_${user?.ref_code || ""}`
+      link: `https://t.me/${c.botUsername}?start=ref_${user?.ref_code || ""}`
     },
     pricing: { letterStars: c.letterPrice, currency: "XTR" },
     letters: Number(letters?.n || 0),
@@ -406,6 +406,22 @@ async function sendBotText(env, chatId, text, options = {}) {
     throw new Error(`Telegram sendMessage failed: ${data?.description || response.status}`);
   }
   return data.result;
+}
+
+
+async function deleteBotMessage(env, chatId, messageId) {
+  if (!env.TELEGRAM_BOT_TOKEN || !chatId || !messageId) return false;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+    });
+    const data = await response.json().catch(() => null);
+    return Boolean(response.ok && data?.ok);
+  } catch (_) {
+    return false;
+  }
 }
 
 function miniAppKeyboard(env) {
@@ -820,9 +836,12 @@ async function webhook(request, env) {
     const senderId = String(message.from?.id || "");
     const isOwner = senderId === OWNER_TELEGRAM_ID;
 
-    // Register/update every Telegram user who talks to the bot. This makes username gifting reliable.
+    const startPayload = command === "/start" ? String(parts[1] || "").trim() : "";
+
+    // Register/update every Telegram user who talks to the bot. For referral /start,
+    // persist the ref payload before the command message is cleaned up.
     if (message.from?.id) {
-      try { await ensureUser(env, message.from, ""); } catch (_) {}
+      try { await ensureUser(env, message.from, startPayload); } catch (_) {}
     }
 
     if (command === "/start") {
@@ -838,6 +857,9 @@ async function webhook(request, env) {
           { reply_markup: miniAppKeyboard(env) }
         );
       }
+      // Keep the bot chat clean: the technical /start (including referral payload)
+      // is removed only after it has been processed and the welcome message sent.
+      await deleteBotMessage(env, message.chat.id, message.message_id);
     } else if (command === "/help") {
       if (isOwner) {
         await sendBotText(env, message.chat.id,
