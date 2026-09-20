@@ -1,4 +1,4 @@
-# Love Letter Official 3.0.0 — Original Product + Telegram Commerce
+# Love Letter Official 3.1.0 — Original Product + Telegram Commerce
 
 Це не спрощений rewrite. База — повний оригінальний Love Letter з його creator/mobile/desktop/recipient функціоналом.
 
@@ -54,3 +54,16 @@ npm run bot:setup
 ```
 
 Worker self-initializes all additional D1 tables/columns, so a separate migration command is not required for the Telegram commerce schema.
+
+
+## 3.1.0 Commerce flow
+
+- Original Love Letter creator/recipient experience stays intact.
+- 3 new letters per calendar month are free for each Telegram user.
+- Editing an existing letter does not consume another credit.
+- After the monthly quota, referral bonus credits are consumed first, then paid credits.
+- One qualified invited friend gives +1 non-expiring bonus letter.
+- Extra letters are purchased one-by-one using Telegram Stars (XTR).
+- Payment is credited only after Telegram sends `successful_payment` to the webhook.
+- The Mini App polls payment state after native `openInvoice()` and refreshes the balance.
+- Fixed the original share-image runtime typo: `canvas.toDataURL(...)`.
