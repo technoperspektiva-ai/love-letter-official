@@ -10502,8 +10502,15 @@ async function makeShareLink(){
     try{ data = await response.json(); }catch{}
 
     if(!response.ok || !data.path){
+      if(data.error === "edit_limit_reached") {
+        throw new Error("Цей лист уже редагували. Доступне лише одне редагування.");
+      }
       throw new Error(data.message || "Не вдалося оновити лист.");
     }
+
+    try{
+      localStorage.setItem(`love-letter-edited-${state.editingId}`, "1");
+    }catch{}
 
     upsertLocalLetter({
       id: state.editingId,
@@ -10639,6 +10646,13 @@ function mountStory(payload){
 
         // Якщо цей браузер не є браузером автора — нічого не відбувається.
         if(!editKey) return;
+
+        try{
+          if(localStorage.getItem(`love-letter-edited-${storyId}`) === "1") {
+            showAppToast("Цей лист уже редагували. Доступне лише одне редагування.", 5200);
+            return;
+          }
+        }catch{}
 
         openHiddenEditor(storyId, editKey);
       }

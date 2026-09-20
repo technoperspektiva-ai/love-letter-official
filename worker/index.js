@@ -221,7 +221,8 @@ async function ensureSchema(env) {
     "id TEXT PRIMARY KEY, " +
     "payload TEXT NOT NULL, " +
     "created_at INTEGER NOT NULL, " +
-    "edit_token TEXT" +
+    "edit_token TEXT, " +
+    "edit_count INTEGER NOT NULL DEFAULT 0" +
     ")"
   ).run();
 
@@ -232,6 +233,7 @@ async function ensureSchema(env) {
   const storyCols = new Set((storyInfo.results || []).map(r => r.name));
   if (!storyCols.has("owner_telegram_id")) await env.DB.prepare("ALTER TABLE stories ADD COLUMN owner_telegram_id TEXT").run();
   if (!storyCols.has("credit_source")) await env.DB.prepare("ALTER TABLE stories ADD COLUMN credit_source TEXT").run();
+  if (!storyCols.has("edit_count")) await env.DB.prepare("ALTER TABLE stories ADD COLUMN edit_count INTEGER NOT NULL DEFAULT 0").run();
 
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS telegram_users (" +
@@ -661,12 +663,18 @@ async function updateStory(request, id, env) {
   const editKey = request.headers.get("x-edit-token") || "";
   if (!editKey) return json({ error: "missing_edit_token" }, 401);
 
-  const row = await env.DB.prepare("SELECT edit_token FROM stories WHERE id = ?").bind(id).first();
+  const row = await env.DB.prepare("SELECT edit_token,COALESCE(edit_count,0) AS edit_count FROM stories WHERE id = ?").bind(id).first();
   if (!row) return json({ error: "not_found" }, 404);
   if (!row.edit_token) return json({ error: "not_editable" }, 403);
 
   const hash = await sha256(editKey);
   if (hash !== row.edit_token) return json({ error: "invalid_edit_token" }, 403);
+  if (Number(row.edit_count || 0) >= 1) {
+    return json({
+      error: "edit_limit_reached",
+      message: "Цей лист уже редагували. Доступне лише одне редагування."
+    }, 409);
+  }
 
   const body = await request.json();
   const payload = body?.payload;
@@ -680,8 +688,18 @@ async function updateStory(request, id, env) {
     }, invalid === "payload_too_large" ? 413 : 400);
   }
 
-  await env.DB.prepare("UPDATE stories SET payload = ? WHERE id = ?").bind(JSON.stringify(payload), id).run();
-  return json({ ok: true, id, path: `/l/${id}` });
+  const updated = await env.DB.prepare(
+    "UPDATE stories SET payload = ?, edit_count = edit_count + 1 WHERE id = ? AND COALESCE(edit_count,0) < 1"
+  ).bind(JSON.stringify(payload), id).run();
+
+  if (!updated?.meta?.changes) {
+    return json({
+      error: "edit_limit_reached",
+      message: "Цей лист уже редагували. Доступне лише одне редагування."
+    }, 409);
+  }
+
+  return json({ ok: true, id, path: `/l/${id}`, editsUsed: 1, editsRemaining: 0 });
 }
 
 async function authorizeEdit(id, editKey, env) {
