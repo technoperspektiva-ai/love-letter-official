@@ -1,8 +1,8 @@
-const CACHE="love-letter-official-1.2.0";
+const CACHE="love-letter-official-1.2.1";
 const CORE=[
   "/",
-  "/app.css?v=120",
-  "/app.js?v=120",
+  "/app.css?v=121",
+  "/app.js?v=121",
   "/data.js",
   "/telegram-bridge.js",
   "/brand/logo-icon.svg",
