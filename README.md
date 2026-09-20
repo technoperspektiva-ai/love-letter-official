@@ -1,3 +1,7 @@
+# Love Letter Official 3.3.9
+
+Telegram-only creator mode + owner-controlled browser access. See `BROWSER-ACCESS-3.3.9.md`.
+
 # Love Letter Official 3.3.0 — Telegram Login + Commerce + Browser Compatibility
 
 Це не спрощений rewrite. База — повний оригінальний Love Letter з його creator/mobile/desktop/recipient функціоналом.

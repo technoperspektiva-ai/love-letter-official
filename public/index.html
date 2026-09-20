@@ -7247,6 +7247,11 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .ll-login-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff3f7;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .ll-login-wrap{padding:12px 0 4px;text-align:center}.ll-login-copy{font-size:13px;color:#826a76;line-height:1.45;margin:0 0 14px}.ll-login-widget{min-height:52px;display:flex;justify-content:center;align-items:center}.ll-login-fallback{display:inline-flex;text-decoration:none;background:#2AABEE;color:white;padding:12px 16px;border-radius:14px;font-weight:800}.ll-tg-user{font-size:11px;color:#8a6d79;margin-top:8px;text-align:center}
 </style>
+
+<style id="browser-access-gate-style">
+#llBrowserGate{position:fixed;inset:0;z-index:999999;background:linear-gradient(180deg,#fff8fb,#f9eef3);display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#llBrowserGate[hidden]{display:none!important}.ll-browser-gate-card{width:min(440px,100%);background:#fff;border:1px solid rgba(86,35,58,.09);border-radius:28px;padding:28px 24px;box-shadow:0 24px 70px rgba(77,29,52,.12);text-align:center}.ll-browser-gate-icon{font-size:52px;line-height:1;margin-bottom:14px}.ll-browser-gate-card h1{margin:0 0 10px;color:#3f1c2c;font-size:27px;line-height:1.12}.ll-browser-gate-card p{margin:0 auto 20px;max-width:340px;color:#795b69;font-size:14px;line-height:1.55}.ll-browser-gate-btn{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:16px;background:#442033;color:#fff;text-decoration:none;font-weight:800;font-size:15px;padding:0 20px}.ll-browser-gate-note{margin-top:12px!important;font-size:11px!important;color:#a48794!important}
+</style>
 </head>
 <body>
 <div class="app">
@@ -7308,7 +7313,6 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
     <header class="topbar shell">
       <div class="brand"><div class="seal">L</div><div>Love Letter</div></div>
       <div class="top-actions">
-        <button class="install-app-btn" id="installAppBtn" type="button">Встановити</button>
         <button class="new-letter-btn" id="newLetterBtn" type="button">Новий лист</button>
         <div class="badge">Love Letter</div>
       </div>
@@ -7588,7 +7592,7 @@ button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   };
   function host(){let el=document.getElementById("llTelegramCommerce");if(el)return el;el=document.createElement("div");el.id="llTelegramCommerce";document.body.appendChild(el);return el}
   function ensureModal(){if(document.getElementById("llTgModal"))return;const wrap=document.createElement("div");wrap.className="ll-tg-modal";wrap.id="llTgModal";wrap.innerHTML='<section class="ll-tg-card" role="dialog" aria-modal="true"><div id="llTgModalBody"></div></section>';wrap.addEventListener("click",e=>{if(e.target===wrap)closeAccount()});document.body.appendChild(wrap)}
-  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.3.6</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
+  function accountMarkup(message=""){const a=state.account||{},c=a.credits||{},r=a.referrals||{},price=a.pricing?.letterStars||25,total=Number(c.totalAvailable||0),monthly=Number(c.monthlyRemaining||0),bonus=Number(c.bonus||0),paid=Number(c.paid||0);const who=a.user?.username?"@"+esc(a.user.username):esc(a.user?.firstName||"Telegram");return '<div class="ll-tg-kicker">Love Letter Official · v3.3.9</div><h2>Баланс листів</h2>'+(message?'<div class="ll-tg-error show">'+esc(message)+'</div>':'')+'<div class="ll-tg-grid"><div class="ll-tg-stat"><b>'+monthly+'</b><span>безкоштовних</span></div><div class="ll-tg-stat"><b>'+bonus+'</b><span>за друзів</span></div><div class="ll-tg-stat"><b>'+paid+'</b><span>придбаних</span></div></div><p><b>3 листи щомісяця безкоштовно.</b> Після цього 1 лист коштує <b>'+price+' ⭐</b>, або запроси друга: коли він створить хоча б 1 лист, ти отримаєш +1 лист.</p><div class="ll-tg-purchase-note">Доступно зараз: <b>'+total+'</b> · Додатковий лист: <b>'+price+' ⭐</b></div><div class="ll-tg-actions"><button class="ll-tg-btn primary" id="llBuyLetter">Купити +1 лист · '+price+' ⭐</button><button class="ll-tg-btn secondary" id="llInviteFriend">Запросити друга · отримати +1</button></div><div class="ll-tg-subactions"><button class="ll-tg-btn info" id="llPurchases">Мої покупки</button><button class="ll-tg-btn info" id="llPaySupport">Підтримка оплати</button></div><div class="ll-tg-actions"><button class="ll-tg-btn ghost" id="llCloseAccount">Закрити</button></div><div class="ll-tg-note">Telegram: '+who+' · Використано цього місяця: '+Number(c.monthlyUsed||0)+' / '+Number(c.monthlyLimit||3)+' · Успішних запрошень: '+Number(r.qualified||0)+'</div>'}
   function wireModal(){document.getElementById("llCloseAccount")?.addEventListener("click",closeAccount);document.getElementById("llInviteFriend")?.addEventListener("click",inviteFriend);document.getElementById("llBuyLetter")?.addEventListener("click",buyLetter);document.getElementById("llPurchases")?.addEventListener("click",openPurchases);document.getElementById("llPaySupport")?.addEventListener("click",openPaySupport)}
   function openAccount(message=""){ensureModal();const modal=document.getElementById("llTgModal"),body=document.getElementById("llTgModalBody");body.innerHTML=accountMarkup(message);wireModal();modal.classList.add("open")}
   function closeAccount(){document.getElementById("llTgModal")?.classList.remove("open")}
@@ -8306,7 +8310,13 @@ function renderAppHome(){
     </section>`;
 
   window.LoveLetterTelegram?.renderHomeLetterStatus?.();
-  document.getElementById("maStartBtn")?.addEventListener("click",()=>openMobileCreate({resume:false}));
+  document.getElementById("maStartBtn")?.addEventListener("click",()=>{
+    if(!window.LoveLetterTelegram?.account){
+      window.LoveLetterTelegram?.openLogin?.("Увійди через Telegram, щоб створити лист.");
+      return;
+    }
+    openMobileCreate({resume:false});
+  });
   document.getElementById("maResumeDraftBtn")?.addEventListener("click",()=>openMobileCreate({resume:true}));
   document.getElementById("maSeeAllBtn")?.addEventListener("click",()=>setMobileAppRoute("library"));
   document.getElementById("maIdeasBtn")?.addEventListener("click",()=>setMobileAppRoute("ideas"));
@@ -8839,6 +8849,35 @@ function renderAppIdeas(){
     btn.addEventListener("click",()=>applyPreset(btn.dataset.ideaId,Number(btn.dataset.greetingIndex||0)));
   });
 }
+async function loadOwnerBrowserAccess(){
+  const stateEl=document.getElementById("ownerBrowserAccessState");
+  const btn=document.getElementById("ownerBrowserAccessToggle");
+  if(!stateEl||!btn)return;
+  try{
+    const r=await fetch("/api/admin/browser-access",{cache:"no-store"});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.message||d.error||"Помилка");
+    btn.dataset.enabled=d.enabled?"1":"0";
+    stateEl.textContent=d.enabled?"Увімкнено":"Вимкнено";
+    stateEl.className="ma-setting-badge "+(d.enabled?"ok":"soft");
+    btn.textContent=d.enabled?"Вимкнути":"Увімкнути";
+    btn.disabled=false;
+  }catch(e){stateEl.textContent="Не вдалося завантажити";btn.disabled=true;}
+}
+async function toggleOwnerBrowserAccess(){
+  const btn=document.getElementById("ownerBrowserAccessToggle");
+  if(!btn)return;
+  const enabled=btn.dataset.enabled!=="1";
+  btn.disabled=true;
+  try{
+    const r=await fetch("/api/admin/browser-access",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({enabled})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.message||d.error||"Помилка");
+    showMobileToast(enabled?"Доступ через браузер увімкнено":"Доступ через браузер вимкнено");
+    await loadOwnerBrowserAccess();
+  }catch(e){showMobileToast(e.message||"Не вдалося змінити налаштування");btn.disabled=false;}
+}
+
 function renderAppSettings(){
   setMobileAppVisibility(true);
   document.body.classList.add("ma-no-tabs");
@@ -8866,27 +8905,24 @@ function renderAppSettings(){
             <strong>${hasDraft ? "1" : "0"}</strong>
             <span>${hasDraft ? "активна чернетка" : "чернеток зараз немає"}</span>
           </div>
-          <div class="ma-settings-chip">
-            <strong>${installed ? "Так" : "Ще ні"}</strong>
-            <span>${installed ? "додано на екран" : "можна встановити"}</span>
-          </div>
         </div>
       </div>
 
       <div class="ma-setting-grid">
-        <div class="ma-setting-card ma-setting-card--warm">
+        ${String(window.LoveLetterTelegram?.account?.user?.id||"")==="375938798" ? `
+        <div class="ma-setting-card ma-setting-card--warm" id="ownerBrowserAccessCard">
           <div class="ma-setting-head">
             <div class="ma-setting-copy">
-              <div class="ma-setting-title">Love Letter як застосунок</div>
-              <div class="ma-setting-sub">${installed ? "Застосунок уже готовий для швидкого відкриття з домашнього екрана." : "Додай Love Letter на головний екран, щоб повертатися до листів в один дотик."}</div>
+              <div class="ma-setting-title">Адмін · Доступ через браузер</div>
+              <div class="ma-setting-sub">Коли вимкнено, авторська частина Love Letter відкривається тільки всередині Telegram. Звичайний браузер показує посилання на бота.</div>
             </div>
-            <div class="ma-setting-icon">✦</div>
+            <div class="ma-setting-icon">⚙</div>
           </div>
-          <div class="ma-setting-meta">
-            <span class="ma-setting-badge ${installed ? "ok" : ""}">${installed ? "Вже встановлено" : "Швидкий доступ"}</span>
-            ${installed ? "" : '<button class="ma-small-btn ma-small-btn--primary" id="maInstallBtn" type="button">Встановити</button>'}
+          <div class="ma-setting-actions">
+            <span class="ma-setting-badge soft" id="ownerBrowserAccessState">Перевіряю…</span>
+            <button class="ma-small-btn ma-small-btn--primary" id="ownerBrowserAccessToggle" type="button" disabled>Змінити</button>
           </div>
-        </div>
+        </div>` : ""}
 
         <div class="ma-setting-card">
           <div class="ma-setting-head">
@@ -8933,16 +8969,8 @@ function renderAppSettings(){
       </div>
     </section>`;
 
-  document.getElementById("maInstallBtn")?.addEventListener("click",async()=>{
-    if(deferredInstallPrompt){
-      deferredInstallPrompt.prompt();
-      try{await deferredInstallPrompt.userChoice}catch{}
-      deferredInstallPrompt=null;
-    }else{
-      const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-      showMobileToast(isIOS ? "Safari → Поділитися → На початковий екран" : "Відкрий меню браузера → Встановити застосунок");
-    }
-  });
+  document.getElementById("ownerBrowserAccessToggle")?.addEventListener("click",toggleOwnerBrowserAccess);
+  loadOwnerBrowserAccess();
   document.getElementById("maOpenLibraryBtn")?.addEventListener("click",()=>{
     location.hash="#library";
     renderFromHash();
@@ -11761,5 +11789,23 @@ window.addEventListener("load", ()=>{
   <section class="app-sheet-panel" id="appSheetPanel" role="dialog" aria-modal="true"></section>
 </div>
 
+
+<script id="browser-access-gate">
+(()=>{
+  const creatorPath=location.pathname==="/"||location.pathname.startsWith("/edit/");
+  if(!creatorPath)return;
+  const inTelegram=()=>Boolean(window.Telegram?.WebApp?.initData);
+  if(inTelegram())return;
+  const show=(url)=>{
+    let gate=document.getElementById("llBrowserGate");
+    if(!gate){gate=document.createElement("div");gate.id="llBrowserGate";document.body.appendChild(gate);}
+    gate.hidden=false;
+    gate.innerHTML='<div class="ll-browser-gate-card"><div class="ll-browser-gate-icon">💌</div><h1>Love Letter відкривається в Telegram</h1><p>Щоб створювати та керувати листами, відкрий офіційний бот. Так баланс, Stars і реферальні бонуси залишаються прив’язаними до твого Telegram.</p><a class="ll-browser-gate-btn" href="'+String(url||"https://t.me/loveletter_official_bot?start=start").replace(/"/g,"&quot;")+'">Відкрити в Telegram</a><p class="ll-browser-gate-note">Посилання на отримані листи продовжують відкриватися у звичайному браузері.</p></div>';
+    document.documentElement.style.overflow="hidden";
+    document.body.style.overflow="hidden";
+  };
+  fetch("/api/public/config",{cache:"no-store"}).then(r=>r.json()).then(d=>{if(!d.browserAccessEnabled&&!inTelegram())show(d.botStartUrl)}).catch(()=>show("https://t.me/loveletter_official_bot?start=start"));
+})();
+</script>
 </body>
 </html>

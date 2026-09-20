@@ -1,4 +1,4 @@
-const VERSION = "3.3.7";
+const VERSION = "3.3.9";
 const OWNER_TELEGRAM_ID = "375938798";
 
 const cors = {
@@ -204,11 +204,11 @@ async function authenticate(request, env) {
   const auth = request.headers.get("authorization") || "";
   const direct = request.headers.get("x-telegram-init-data") || "";
   const raw = auth.startsWith("tma ") ? auth.slice(4) : direct;
-  if (raw) return verifyInitData(raw, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge);
+  if (raw) { const data = await verifyInitData(raw, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge); return { ...data, source: "telegram" }; }
 
   const cookieSession = parseCookies(request).ll_tg_session || "";
   const session = await verifyBrowserSession(cookieSession, env.TELEGRAM_BOT_TOKEN);
-  if (session) return session;
+  if (session) return { ...session, source: "browser" };
 
   throw Object.assign(new Error("Увійди через Telegram, щоб створювати листи."), { status: 401, code: "AUTH_REQUIRED" });
 }
@@ -256,6 +256,10 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS payments (id TEXT PRIMARY KEY, telegram_id TEXT NOT NULL, invoice_payload TEXT NOT NULL UNIQUE, stars INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', telegram_payment_charge_id TEXT UNIQUE, provider_payment_charge_id TEXT, created_at INTEGER NOT NULL, paid_at INTEGER, refunded_at INTEGER)"
   ).run();
   await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(telegram_id,created_at DESC)").run();
+
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)"
+  ).run();
 }
 
 async function ensureUser(env, tg, startParam = "") {
@@ -319,6 +323,46 @@ async function ensureMonth(env, userId) {
     "UPDATE monthly_usage SET free_limit=?,updated_at=? WHERE telegram_id=? AND month_key=?"
   ).bind(c.freeLimit, t, userId, key).run();
   return env.DB.prepare("SELECT * FROM monthly_usage WHERE telegram_id=? AND month_key=?").bind(userId, key).first();
+}
+
+async function getSetting(env, key, fallback = "") {
+  await ensureSchema(env);
+  const row = await env.DB.prepare("SELECT value FROM app_settings WHERE key=?").bind(key).first();
+  return row ? String(row.value) : fallback;
+}
+
+async function setSetting(env, key, value) {
+  await ensureSchema(env);
+  await env.DB.prepare(
+    "INSERT INTO app_settings (key,value,updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at"
+  ).bind(key, String(value), Date.now()).run();
+}
+
+async function browserAccessEnabled(env) {
+  return (await getSetting(env, "browser_access_enabled", "0")) === "1";
+}
+
+async function publicConfig(env) {
+  const c = cfg(env);
+  return json({
+    ok: true,
+    browserAccessEnabled: await browserAccessEnabled(env),
+    botUsername: c.botUsername,
+    botStartUrl: `https://t.me/${c.botUsername}?start=start`,
+    version: VERSION
+  });
+}
+
+async function adminBrowserAccess(request, env) {
+  let auth;
+  try { auth = await authenticatedUser(request, env, { allowBrowserWhenDisabled: true }); }
+  catch (error) { return json({ error: error.code || "auth_error", message: error.message }, error.status || 401); }
+  if (String(auth.userId) !== OWNER_TELEGRAM_ID) return json({ error: "forbidden" }, 403);
+  if (request.method === "GET") return json({ ok: true, enabled: await browserAccessEnabled(env) });
+  const body = await request.json().catch(() => ({}));
+  const enabled = Boolean(body?.enabled);
+  await setSetting(env, "browser_access_enabled", enabled ? "1" : "0");
+  return json({ ok: true, enabled });
 }
 
 async function accountSnapshot(env, userId) {
@@ -536,6 +580,11 @@ async function telegramLoginCallback(request, env) {
     const url = new URL(request.url);
     const tg = await verifyTelegramLoginPayload(url.searchParams, env.TELEGRAM_BOT_TOKEN, cfg(env).authMaxAge);
     await ensureSchema(env);
+    if (String(tg.id) !== OWNER_TELEGRAM_ID && !(await browserAccessEnabled(env))) {
+      const blocked = new URL("/", cfg(env).appOrigin || url.origin);
+      blocked.searchParams.set("browser_access", "disabled");
+      return Response.redirect(blocked.toString(), 302);
+    }
     await ensureUser(env, tg, "");
     const token = await createBrowserSession(tg, env.TELEGRAM_BOT_TOKEN);
     const dest = new URL("/", cfg(env).appOrigin || url.origin);
@@ -577,8 +626,11 @@ async function health(env) {
   }
 }
 
-async function authenticatedUser(request, env) {
+async function authenticatedUser(request, env, options = {}) {
   const a = await authenticate(request, env);
+  if (a.source === "browser" && !options.allowBrowserWhenDisabled && !(await browserAccessEnabled(env))) {
+    throw Object.assign(new Error("Відкрий Love Letter через Telegram-бота."), { status: 403, code: "BROWSER_ACCESS_DISABLED" });
+  }
   const user = await ensureUser(env, a.user, a.startParam || "");
   return { a, user, userId: String(user.telegram_id) };
 }
@@ -967,6 +1019,8 @@ export default {
 
     try {
       if (url.pathname === "/api/health" && request.method === "GET") return await health(env);
+      if (url.pathname === "/api/public/config" && request.method === "GET") return await publicConfig(env);
+      if (url.pathname === "/api/admin/browser-access" && (request.method === "GET" || request.method === "POST")) return await adminBrowserAccess(request, env);
       if (url.pathname === "/api/telegram/status" && request.method === "GET") return await telegramStatus(env);
       if (url.pathname === "/api/telegram/setup" && request.method === "GET") return await telegramSetup(env);
       if (url.pathname === "/api/auth/telegram/callback" && request.method === "GET") return await telegramLoginCallback(request, env);
