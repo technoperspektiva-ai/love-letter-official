@@ -76,7 +76,7 @@ npx wrangler d1 create love-letter-official-db
 After replacing the placeholders in `wrangler.jsonc`:
 
 ```bash
-npm ci
+npm install --no-audit --no-fund
 npm run test:syntax
 npm run db:migrate:remote
 npm run deploy
