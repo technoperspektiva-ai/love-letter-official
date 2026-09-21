@@ -7494,6 +7494,33 @@ body.mw-create-active #mobileWizard{
 .recipient-welcome-close{margin-top:8px;background:transparent;color:#806774}
 .recipient-welcome button:focus-visible{outline:2px solid #b77b95;outline-offset:3px}
 </style>
+<style id="ios-miniapp-settings-safe-area-fix-v348">
+/* Keep the top-right settings button inside the visible iPhone / Telegram Mini App safe area. */
+@media (max-width:900px){
+  #mobileApp .ma-topbar{
+    width:100% !important;
+    max-width:100vw !important;
+    box-sizing:border-box !important;
+    padding-left:max(16px,calc(10px + env(safe-area-inset-left))) !important;
+    padding-right:max(22px,calc(10px + env(safe-area-inset-right))) !important;
+  }
+
+  #mobileApp .ma-icon-btn{
+    min-width:34px !important;
+    width:34px !important;
+    height:34px !important;
+    margin:0 !important;
+    justify-self:end !important;
+    flex:0 0 34px !important;
+  }
+
+  html.tg-miniapp #mobileApp .ma-topbar,
+  body.tg-miniapp #mobileApp .ma-topbar{
+    padding-left:max(16px,calc(10px + env(safe-area-inset-left)),calc(10px + var(--tg-safe-area-inset-left,0px)),calc(10px + var(--tg-content-safe-area-inset-left,0px))) !important;
+    padding-right:max(22px,calc(10px + env(safe-area-inset-right)),calc(10px + var(--tg-safe-area-inset-right,0px)),calc(10px + var(--tg-content-safe-area-inset-right,0px))) !important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="llSplash" role="status" aria-live="polite" aria-label="Завантажуємо Love Letter">
