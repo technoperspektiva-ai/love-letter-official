@@ -7510,8 +7510,27 @@ body.mw-create-active #mobileWizard{
     width:34px !important;
     height:34px !important;
     margin:0 !important;
+    padding:0 !important;
     justify-self:end !important;
     flex:0 0 34px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    font-size:0 !important;
+    line-height:0 !important;
+    letter-spacing:0 !important;
+    color:transparent !important;
+    overflow:hidden !important;
+  }
+
+  #mobileApp .ma-icon-btn::before{
+    content:"";
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:#59424d;
+    box-shadow:-7px 0 #59424d,7px 0 #59424d;
+    flex:0 0 4px;
   }
 
   html.tg-miniapp #mobileApp .ma-topbar,
