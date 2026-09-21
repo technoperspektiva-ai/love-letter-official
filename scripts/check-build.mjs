@@ -34,4 +34,4 @@ if (!worker.includes("/api/admin/stats") || !worker.includes("/api/presence")) t
 if (!worker.includes("/webon") || !worker.includes("/weboff") || !worker.includes("/stats") || !worker.includes("/setfree") || !worker.includes("/free")) throw new Error("Owner web/stat/free-limit commands missing");
 if (!html.includes("ownerStatsValues")) throw new Error("Owner statistics UI missing");
 if (!worker.includes("monthly_free_limit")) throw new Error("Dynamic monthly free limit setting missing");
-console.log("Love Letter Official 3.4.6 build: PASS");
+console.log("Love Letter Official 3.4.7 build: PASS");

@@ -7309,6 +7309,140 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .recipient-love-signature{margin-top:12px;font-size:11.5px;padding:0 8px}
 }
 </style>
+<style id="letter-polish-v347">
+/* 3.4.7: one continuous creator canvas, including content below the viewport. */
+body.mw-create-active:not(.tg-miniapp):not(.preview-scroll-lock){overflow-x:clip !important;overflow-y:visible !important}
+body.mw-create-active:not(.story-open),
+body.mw-create-active:not(.story-open) .app,
+body.mw-create-active #creatorView,
+body.mw-create-active #mobileWizard{
+  background-color:#faf6f2 !important;
+}
+body.mw-create-active #mobileWizard{
+  background-image:radial-gradient(ellipse at 12% 12%,rgba(243,211,222,.24),transparent 52%),linear-gradient(180deg,#fcf9f5,#faf6f2) !important;
+}
+@media(max-width:900px){
+  /* Browser uses document scrolling. Telegram retains its own flex scroller. */
+  body.mw-create-active:not(.tg-miniapp) #mobileWizard{
+    height:auto !important;max-height:none !important;min-height:var(--ll-vh) !important;
+  }
+  body.mw-create-active:not(.tg-miniapp) #creatorView{
+    height:auto !important;max-height:none !important;overflow:visible !important;
+  }
+  body.mw-create-active #mobileWizard .mw-top{flex-shrink:0}
+  body.mw-create-active #mobileWizard .mw-actionbar{
+    background:linear-gradient(180deg,rgba(250,246,242,0),#faf6f2 24%) !important;
+  }
+}
+#mobileWizard .mw-disclosure{
+  margin:16px 0;padding:0;border:1px solid #e8dce0;border-radius:18px;
+  background:#f8f1ef;box-shadow:0 3px 12px rgba(89,45,64,.025);overflow:hidden;
+}
+#mobileWizard .mw-disclosure summary{
+  display:flex;align-items:center;gap:10px;min-height:58px;padding:12px 14px;
+  list-style:none;cursor:pointer;color:#543747;
+  font:600 13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+#mobileWizard .mw-disclosure summary::-webkit-details-marker{display:none}
+#mobileWizard .mw-disclosure summary>span{flex:1;min-width:0}
+#mobileWizard .mw-disclosure summary small{
+  flex-shrink:0;padding:6px 8px;border-radius:20px;background:#eee2e7;
+  color:#7c5366;font:500 11px/1.2 system-ui,sans-serif;
+}
+.mw-disclosure-chevron{
+  width:7px;height:7px;flex:0 0 7px;border-right:1.5px solid #92667b;border-bottom:1.5px solid #92667b;
+  transform:rotate(45deg);transition:transform .2s ease;margin:0 2px 4px;
+}
+.mw-disclosure[open] .mw-disclosure-chevron{transform:rotate(225deg);margin-top:6px}
+#mobileWizard .mw-disclosure summary:hover{background:rgba(255,255,255,.45)}
+#mobileWizard .mw-disclosure summary:focus-visible,
+#storyView button:focus-visible{outline:2px solid #b47e97;outline-offset:4px}
+#mobileWizard .mw-font-help{margin:0;padding:0 14px;color:#856c77;font:400 12px/1.5 system-ui,sans-serif}
+#mobileWizard .mw-letter-font-grid{padding:0 10px 10px}
+/* Native details keeps both panels keyboard accessible and closed on entry. */
+@media(max-width:360px){
+  #mobileWizard .mw-disclosure summary{gap:7px;padding:12px 10px;font-size:12px}
+  #mobileWizard .mw-disclosure summary small{font-size:10px;padding:5px 6px}
+}
+
+/* Recipient: quiet ivory typography on a warm burgundy surface. */
+#storyView #storyStage{
+  background:radial-gradient(ellipse at 50% 30%,rgba(171,101,130,.15),transparent 65%),linear-gradient(160deg,#4b2438,#281522 85%) !important;
+}
+#storyView .light-title,#storyView .qmark{
+  font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif !important;
+  font-weight:500 !important;font-size:clamp(38px,10vw,54px) !important;
+  line-height:1.14 !important;letter-spacing:-.02em !important;text-shadow:none !important;
+  overflow-wrap:anywhere;
+}
+#storyView .recipient-intro .light-sub{
+  color:#e3c9d1 !important;font-size:16px !important;font-weight:400 !important;
+  line-height:1.6 !important;letter-spacing:.04em;overflow-wrap:anywhere;
+}
+#storyView .recipient-intro .light-title{margin:12px auto 0 !important}
+.recipient-intro-emblem{
+  width:58px;height:58px;display:grid;place-items:center;margin-bottom:26px;
+  border:1px solid rgba(234,200,214,.3);border-radius:50%;color:#e4b9c8;
+  font:32px/1 Georgia,serif;
+}
+.recipient-intro-note{max-width:260px;margin:20px auto 0;color:#cdb2bf;font:400 14px/1.7 system-ui,sans-serif;text-wrap:balance}
+#storyView .big-button{
+  background:linear-gradient(135deg,#f6e3e8,#e9c1d0);color:#512c3e;
+  box-shadow:0 8px 24px rgba(13,4,10,.14);font-weight:600 !important;line-height:1.4 !important;
+  padding:15px 20px;white-space:normal;
+}
+#storyView #toEnvelopeBtn{max-width:244px;margin-top:30px !important;display:flex;justify-content:center;gap:22px;align-items:center}
+#storyView .recipient-intro{animation:llIntroIn .8s ease both}
+@keyframes llIntroIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* Seal -> flap -> paper. Only transform and opacity animate. */
+#storyView .envelope-stage{perspective:1100px}
+#storyView .recipient-envelope{
+  width:min(280px,100%);min-width:0;border-radius:12px;
+  background:linear-gradient(145deg,#fff6ef,#ead8d4);
+  box-shadow:0 25px 50px rgba(9,2,7,.25),0 1px 0 rgba(255,255,255,.4) inset;
+}
+#storyView .recipient-envelope .flap{
+  height:65%;z-index:4;clip-path:polygon(0 0,100% 0,50% 100%);
+  background:linear-gradient(175deg,#fff8f0,#e8d6d4);backface-visibility:visible;
+}
+#storyView .recipient-envelope .wax{
+  z-index:5;width:52px;height:52px;top:54%;font:500 26px/1 Georgia,serif;
+  background:radial-gradient(circle at 35% 25%,#ab627a,#6d2c47 75%);
+  border:1px solid #b97a8e;box-shadow:inset 0 0 0 4px rgba(70,22,42,.18),0 4px 8px rgba(53,23,35,.22);color:#f4dce2;
+}
+#storyView .recipient-envelope .recipient{
+  bottom:13px;font:400 17px/1.3 Georgia,serif;color:#735463;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#storyView .letter-peek{
+  top:12%;height:83%;padding:22px 12px;
+  background:linear-gradient(180deg,#fffdf7,#f6e9dd);font:italic 22px/1.5 Georgia,serif;
+  color:#895a6e;box-shadow:0 4px 16px rgba(55,25,40,.12);
+}
+#storyView .letter-peek::after{
+  content:"";position:absolute;left:20%;right:20%;top:56%;height:24%;
+  background:repeating-linear-gradient(180deg,rgba(137,90,110,.18) 0 1px,transparent 1px 12px);
+}
+#storyView .recipient-envelope.is-opening{animation:llEnvelopeSettle 1.9s ease both}
+#storyView .recipient-envelope.is-opening .wax{animation:llSealLift .48s ease both}
+#storyView .recipient-envelope.is-opening .flap{animation:llFlapUnfold .85s .22s cubic-bezier(.3,.65,.2,1) forwards}
+#storyView .recipient-envelope.is-opening .letter-peek{animation:llPaperLift 1.15s .7s cubic-bezier(.22,.7,.25,1) forwards}
+#storyView .recipient-envelope.is-opening .front{animation:none}
+@keyframes llSealLift{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}45%{opacity:1;transform:translate(-50%,-55%) scale(1.1) rotate(-8deg)}100%{opacity:0;transform:translate(-50%,10%) scale(.86) rotate(12deg)}}
+@keyframes llFlapUnfold{0%{transform:rotateX(0deg);z-index:4}50%{z-index:4}51%{z-index:0}100%{transform:rotateX(-178deg);z-index:0}}
+@keyframes llPaperLift{0%{opacity:0;transform:translateY(18%) scale(.94)}20%{opacity:1}76%{opacity:1;transform:translateY(-66%) scale(1)}100%{opacity:0;transform:translateY(-85%) scale(1.04)}}
+@keyframes llEnvelopeSettle{0%{transform:translateY(0);opacity:1}55%{transform:translateY(18px);opacity:1}83%{opacity:1}100%{transform:translateY(32px) scale(.97);opacity:0}}
+#storyView .paper.letter-enter{animation:llLetterArrive .8s cubic-bezier(.2,.75,.2,1) both}
+@keyframes llLetterArrive{from{opacity:0;transform:translateY(26px) scale(.97)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){
+  #storyView .recipient-intro,#storyView .recipient-envelope.is-opening,
+  #storyView .recipient-envelope.is-opening *,#storyView .paper.letter-enter,
+  #storyView .paper.letter-enter *{animation:none !important;transition:none !important;opacity:1 !important;transform:none !important}
+  .mw-disclosure-chevron{transition:none}
+}
+
+</style>
 </head>
 <body>
 <div class="app">
@@ -9433,9 +9567,12 @@ function setLetterFont(fontId){
   const value=allowed.has(fontId)?fontId:"classic";
   const legacy=document.getElementById("letterFont");
   if(legacy) legacy.value=value;
+  const fontSummary=document.getElementById("mwSelectedFont");
+  if(fontSummary) fontSummary.textContent=LETTER_FONT_OPTIONS.find(font=>font.id===value)?.label || "Класика";
 
   document.querySelectorAll("[data-letter-font]").forEach(btn=>{
     btn.classList.toggle("is-active",btn.dataset.letterFont===value);
+    btn.setAttribute("aria-pressed", String(btn.dataset.letterFont===value));
   });
 
   renderPhonePreview();
@@ -9497,10 +9634,10 @@ const MOBILE_WIZARD_STEPS = [
       <div class="mw-screen mw-letter-editor">
         <p class="mw-copy mw-emotional">Можеш написати сам або взяти готову основу й змінити кілька слів під себе.</p>
 
-        <details class="mw-letter-assist" open>
+        <details class="mw-letter-assist mw-disclosure">
           <summary>
             <span>Готові варіанти тексту</span>
-            <small>8 настроїв</small>
+            <small>8 настроїв</small><i class="mw-disclosure-chevron" aria-hidden="true"></i>
           </summary>
           <div class="mw-letter-suggestion-grid">
             ${LETTER_TEXT_SUGGESTIONS.map(item=>`
@@ -9526,13 +9663,12 @@ const MOBILE_WIZARD_STEPS = [
           <input class="mw-input" id="mwLetterSign" maxlength="80" placeholder="Твій..." />
         </div>
 
-        <div class="mw-letter-font-block">
-          <div class="mw-letter-font-head">
-            <div>
-              <strong>Стиль листа</strong>
-              <span>Змінює шрифт самого листа, не інтерфейсу.</span>
-            </div>
-          </div>
+        <details class="mw-letter-font-block mw-disclosure">
+          <summary>
+            <span>Стиль листа</span>
+            <small id="mwSelectedFont">Класика</small><i class="mw-disclosure-chevron" aria-hidden="true"></i>
+          </summary>
+          <p class="mw-font-help">Обери настрій оформлення свого листа.</p>
           <div class="mw-letter-font-grid">
             ${LETTER_FONT_OPTIONS.map(font=>`
               <button class="mw-letter-font" type="button" data-letter-font="${font.id}">
@@ -9543,7 +9679,7 @@ const MOBILE_WIZARD_STEPS = [
                 </span>
               </button>`).join("")}
           </div>
-        </div>
+        </details>
       </div>`
   },
   {
@@ -11004,10 +11140,12 @@ function renderStory(){
 
   if(state.storyStep === 1){
     root.innerHTML = `
-      <div class="stage-center centered">
+      <div class="stage-center centered recipient-intro">
+        <div class="recipient-intro-emblem" aria-hidden="true">♡</div>
         <div class="light-sub">${escapeHtml(formatRecipientName(d))}</div>
         <h2 class="light-title">${escapeHtml(d.introMain || "тобі лист")}</h2>
-        <button class="big-button" id="toEnvelopeBtn" style="max-width:220px;margin-top:28px">Далі</button>
+        <p class="recipient-intro-note">Дещо особливе, тільки для тебе.</p>
+        <button class="big-button" id="toEnvelopeBtn">До конверта <span aria-hidden="true">→</span></button>
       </div>`;
     $("#toEnvelopeBtn").onclick = ()=>{ state.storyStep = 2; renderStory(); };
     return;
@@ -11027,7 +11165,7 @@ function renderStory(){
             <div class="recipient">${escapeHtml(d.recipient || "для тебе")}</div>
           </div>
         </button>
-        <div class="preview-note" id="envelopeNote">${escapeHtml(d.envelopeHint || "відкрий, це тобі")}</div>
+        <div class="preview-note" id="envelopeNote" role="status" aria-live="polite">${escapeHtml(d.envelopeHint || "відкрий, це тобі")}</div>
       </div>`;
 
     $("#envBtn").onclick = ()=>{
@@ -11040,12 +11178,15 @@ function renderStory(){
       envelope.classList.add("is-opening");
 
       const note = $("#envelopeNote");
-      if(note) note.textContent = "відкриваємо…";
+      if(note) note.textContent = "Усередині — слова для тебе…";
 
       setTimeout(()=>{
+        if(!btn.isConnected || state.storyStep !== 2) return;
         state.storyStep = 3;
         renderStory();
-      }, 1050);
+        const paper=root.querySelector(".paper");
+        if(paper){ paper.tabIndex=-1; paper.focus({preventScroll:true}); }
+      }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1900);
     };
     return;
   }
