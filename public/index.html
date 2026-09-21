@@ -7403,7 +7403,7 @@ body.mw-create-active #mobileWizard{
   box-shadow:0 25px 50px rgba(9,2,7,.25),0 1px 0 rgba(255,255,255,.4) inset;
 }
 #storyView .recipient-envelope .flap{
-  height:65%;z-index:4;clip-path:polygon(0 0,100% 0,50% 100%);
+  height:65%;z-index:4;border-radius:12px 12px 0 0;clip-path:polygon(0 0,100% 0,50% 100%);
   background:linear-gradient(175deg,#fff8f0,#e8d6d4);backface-visibility:visible;
 }
 #storyView .recipient-envelope .wax{
@@ -7442,6 +7442,17 @@ body.mw-create-active #mobileWizard{
   .mw-disclosure-chevron{transition:none}
 }
 
+</style>
+<style>
+.recipient-welcome{width:min(420px,calc(100% - 32px));max-height:calc(100dvh - 40px);box-sizing:border-box;padding:30px 24px;border:1px solid #eadce1;border-radius:26px;background:#fcf7f2;color:#503040;text-align:center;box-shadow:0 24px 80px #24101f40}
+.recipient-welcome::backdrop{background:rgba(35,15,29,.6);backdrop-filter:blur(6px)}
+.recipient-welcome-heart{font:38px/1 Georgia,serif;color:#a76781}
+.recipient-welcome h2{font:500 30px/1.15 Georgia,serif;letter-spacing:-.02em;margin:18px 0 14px}
+.recipient-welcome p{font:400 15px/1.65 system-ui,sans-serif;color:#806774;margin:0 0 24px}
+.recipient-welcome button{display:block;width:100%;min-height:48px;border:0;border-radius:14px;padding:12px;font:600 14px/1.4 system-ui,sans-serif;cursor:pointer}
+.recipient-welcome-create{background:#633049;color:#fff7fa}
+.recipient-welcome-close{margin-top:8px;background:transparent;color:#806774}
+.recipient-welcome button:focus-visible{outline:2px solid #b77b95;outline-offset:3px}
 </style>
 </head>
 <body>
@@ -9312,6 +9323,27 @@ function handleMobileAppRoute(){
   renderAppHome();
 }
 
+function showRecipientWelcome(){
+  const url=new URL(location.href);
+  if(url.pathname!=="/" || url.searchParams.get("from")!=="letter") return;
+  url.searchParams.delete("from");
+  history.replaceState(null,"",url.pathname+url.search+url.hash);
+  const modal=document.createElement("dialog");
+  modal.className="recipient-welcome";
+  modal.setAttribute("aria-labelledby","recipientWelcomeTitle");
+  modal.innerHTML=`
+    <span class="recipient-welcome-heart" aria-hidden="true">♡</span>
+    <h2 id="recipientWelcomeTitle">Тепер твоя черга дарувати тепло</h2>
+    <p>Вітаємо в Love Letter! Створи особистий лист для когось важливого — з теплими словами й маленьким сюрпризом.</p>
+    <button type="button" class="recipient-welcome-create">Створити свій лист</button>
+    <button type="button" class="recipient-welcome-close">Поки залишитися на головній</button>`;
+  document.body.appendChild(modal);
+  modal.querySelector(".recipient-welcome-create").onclick=()=>{modal.close();openMobileCreate();};
+  modal.querySelector(".recipient-welcome-close").onclick=()=>modal.close();
+  modal.addEventListener("close",()=>modal.remove(),{once:true});
+  modal.showModal();
+}
+
 async function initMobileApp(){
   if(!isMobileWizard() || location.pathname!=="/") return;
   await hydrateLocalLibrary();
@@ -10841,7 +10873,7 @@ function mountStory(payload){
     <div class="shell" style="padding-bottom:18px">
       <header class="topbar">
         <div class="brand recipient-brand">
-          <button class="recipient-main-logo" id="hiddenEditSeal" type="button" aria-label="Love Letter">
+          <button class="recipient-main-logo" id="recipientHomeLink" type="button" aria-label="На головну — створити свій лист">
             <img src="/brand/logo-main.png?v=1141" alt="Love Letter">
           </button>
         </div>
@@ -10861,52 +10893,9 @@ function mountStory(payload){
   state.storyStep = payload.useSecret ? 0 : 1;
   renderStory();
 
-  // Прихований вхід у редагування для автора:
-  // три швидкі кліки/тапи по іконці "L".
-  // Працює тільки якщо доступ до редагування вже збережений у цьому браузері.
-  const hiddenPath = location.pathname.length > 1
-    ? location.pathname.replace(/\/+$/, "")
-    : location.pathname;
-  const idMatch = hiddenPath.match(/^\/l\/([A-Za-z0-9_-]{4,32})$/);
-  const hiddenSeal = document.getElementById("hiddenEditSeal");
-
-  if(idMatch && hiddenSeal){
-    const storyId = idMatch[1];
-    let tapCount = 0;
-    let tapTimer = null;
-
-    hiddenSeal.style.cursor = "default";
-    hiddenSeal.setAttribute("aria-label", "Love Letter");
-
-    hiddenSeal.addEventListener("click", ()=>{
-      tapCount++;
-
-      clearTimeout(tapTimer);
-      tapTimer = setTimeout(()=>{ tapCount = 0; }, 1100);
-
-      if(tapCount >= 3){
-        tapCount = 0;
-        clearTimeout(tapTimer);
-
-        let editKey = "";
-        try{
-          editKey = localStorage.getItem(`love-letter-edit-${storyId}`) || "";
-        }catch{}
-
-        // Якщо цей браузер не є браузером автора — нічого не відбувається.
-        if(!editKey) return;
-
-        try{
-          if(localStorage.getItem(`love-letter-edited-${storyId}`) === "1") {
-            showAppToast("Цей лист уже редагували. Доступне лише одне редагування.", 5200);
-            return;
-          }
-        }catch{}
-
-        openHiddenEditor(storyId, editKey);
-      }
-    });
-  }
+  document.getElementById("recipientHomeLink")?.addEventListener("click", ()=>{
+    location.assign("/?from=letter");
+  });
 }
 async function openHiddenEditor(storyId, editKey){
   try{
@@ -11987,7 +11976,7 @@ window.addEventListener("load", ()=>{
         document.getElementById("mwPreviewBtn")?.addEventListener("click", openMobilePreview);
         document.getElementById("mwPreviewClose")?.addEventListener("click", closeMobilePreview);
         setupVisualViewportHandling();
-        initMobileApp();
+        initMobileApp().then(showRecipientWelcome);
       },80);
     }
   }
